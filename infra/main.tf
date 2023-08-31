@@ -64,7 +64,7 @@ resource "hcloud_firewall" "firewall-egress" {
   }
 }
 
-# Place servers in different locations in the eu-cental region to improve fault tolerance
+# Place servers in different locations in the eu-central region to improve fault tolerance
 
 resource "hcloud_server" "node1" {
   name        = "node1"
