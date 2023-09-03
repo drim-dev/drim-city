@@ -40,7 +40,8 @@ public class AppDbContext : DbContext
                 .IsRequired();
 
             post.Property(x => x.Slug)
-                .IsRequired();
+                .IsRequired()
+                .HasMaxLength(Post.SlugMaxLength);
 
             post.HasIndex(x => x.Slug)
                 .IsUnique();
