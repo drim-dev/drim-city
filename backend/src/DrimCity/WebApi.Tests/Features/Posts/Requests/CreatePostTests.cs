@@ -2,7 +2,9 @@
 using AutoBogus;
 using FluentAssertions;
 using FluentAssertions.Extensions;
+using FluentValidation.TestHelper;
 using Microsoft.EntityFrameworkCore;
+using WebApi.Features.Posts.Requests;
 using WebApi.Tests.Common.Helpers;
 using WebApi.Tests.Features.Posts.Contracts;
 using WebApi.Tests.Fixtures;
@@ -57,3 +59,64 @@ public class CreatePostTests : IAsyncLifetime
 }
 
 public record CreatePostRequestContract(string Title, string Content);
+
+public class CreatePostValidatorTests
+{
+    private readonly CreatePost.RequestValidator _validator = new();
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void Should_have_error_when_title_empty(string title)
+    {
+        var request = new CreatePost.Request(title, "content");
+
+        var result = _validator.TestValidate(request);
+
+        result.ShouldHaveValidationErrorFor(x => x.Title).WithErrorCode("posts:validation:title_required");
+    }
+
+    [Fact]
+    public void Should_have_error_when_title_exceeds_max_length()
+    {
+        var request = new CreatePost.Request(new string('a', 301), "content");
+
+        var result = _validator.TestValidate(request);
+
+        result.ShouldHaveValidationErrorFor(x => x.Title).WithErrorCode("posts:validation:title_exceeds_max_length");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void Should_have_error_when_content_empty(string content)
+    {
+        var request = new CreatePost.Request("title", content);
+
+        var result = _validator.TestValidate(request);
+
+        result.ShouldHaveValidationErrorFor(x => x.Content).WithErrorCode("posts:validation:content_required");
+    }
+
+    [Fact]
+    public void Should_have_error_when_content_exceeds_max_length()
+    {
+        var request = new CreatePost.Request("title", new string('a', 100_001));
+
+        var result = _validator.TestValidate(request);
+
+        result.ShouldHaveValidationErrorFor(x => x.Content).WithErrorCode("posts:validation:content_exceeds_max_length");
+    }
+
+    [Fact]
+    public void Should_not_have_errors_when_request_valid()
+    {
+        var request = new CreatePost.Request("title", "content");
+
+        var result = _validator.TestValidate(request);
+
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+}

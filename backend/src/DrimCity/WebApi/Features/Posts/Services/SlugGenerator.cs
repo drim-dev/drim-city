@@ -6,7 +6,12 @@ public static class SlugGenerator
 {
     public static string CreateSlug(string text)
     {
-        var slugHelper = new SlugHelper();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            throw new ArgumentException(null, nameof(text));
+        }
+
+        var slugHelper = new SlugHelperForNonAsciiLanguages();
         var slug = slugHelper.GenerateSlug(text);
 
         var suffixBytes = new byte[4];

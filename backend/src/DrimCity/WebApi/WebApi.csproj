@@ -22,7 +22,7 @@
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
       <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="7.0.4" />
-      <PackageReference Include="Slugify.Core" Version="4.0.1" />
+      <PackageReference Include="Slugify.Core" Version="5.0.0-prerelease.4" />
     </ItemGroup>
 
 </Project>
