@@ -1,4 +1,4 @@
-name: Test Pull Request
+name: Backend Pull Request Test
 
 on:
   pull_request:
@@ -8,6 +8,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend/src/DrimCity
     strategy:
       matrix:
         dotnet-version: ['7.0.x']
