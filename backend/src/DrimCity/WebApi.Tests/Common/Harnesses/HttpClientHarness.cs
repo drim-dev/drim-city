@@ -7,18 +7,40 @@ namespace WebApi.Tests.Common.Harnesses;
 public class HttpClientHarness<TProgram> : IHarness<TProgram>
     where TProgram : class
 {
+    private WebApplicationFactory<TProgram>? _factory;
+    private bool _started;
+
     public void ConfigureWebHostBuilder(IWebHostBuilder builder)
     {
-        throw new NotImplementedException();
     }
 
     public Task Start(WebApplicationFactory<TProgram> factory, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        _factory = factory;
+        _started = true;
+
+        return Task.CompletedTask;
     }
 
     public Task Stop(CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        _started = false;
+
+        return Task.CompletedTask;
+    }
+
+    public HttpClient CreateClient()
+    {
+        ThrowIfNotStarted();
+
+        return _factory!.CreateClient();
+    }
+
+    private void ThrowIfNotStarted()
+    {
+        if (!_started)
+        {
+            throw new InvalidOperationException($"HTTP client harness is not started. Call {nameof(Start)} first.");
+        }
     }
 }

@@ -8,9 +8,13 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <PackageReference Include="AutoBogus" Version="2.13.1" />
       <PackageReference Include="FluentAssertions" Version="6.12.0" />
       <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="7.0.10" />
       <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.7.2" />
+      <PackageReference Include="Respawn" Version="6.1.0" />
+      <PackageReference Include="Testcontainers" Version="3.4.0" />
+      <PackageReference Include="Testcontainers.PostgreSql" Version="3.4.0" />
       <PackageReference Include="xunit" Version="2.5.0" />
       <PackageReference Include="xunit.runner.visualstudio" Version="2.5.0">
         <PrivateAssets>all</PrivateAssets>
@@ -20,7 +24,10 @@
 
     <ItemGroup>
       <ProjectReference Include="..\WebApi\WebApi.csproj" />
+
     </ItemGroup>
+
+
 
 
 </Project>
