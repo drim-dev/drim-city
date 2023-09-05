@@ -4,8 +4,6 @@ on:
   pull_request:
     paths:
     - 'backend/**'
-    paths-ignore:
-    - '**.md'
   push:
     branches:
     - main
