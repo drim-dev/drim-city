@@ -2,16 +2,20 @@ name: Backend Test
 
 on:
   pull_request:
+    paths:
+    - 'backend/**'
     paths-ignore:
     - '**.md'
   push:
     branches:
     - main
+    paths:
+    - 'backend/**'
     paths-ignore:
     - '**.md'
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     defaults:
       run:
