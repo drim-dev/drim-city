@@ -64,10 +64,8 @@ resource "hcloud_firewall" "firewall-egress" {
   }
 }
 
-# Place servers in different locations in the eu-central region to improve fault tolerance
-
-resource "hcloud_server" "node1" {
-  name        = "node1"
+resource "hcloud_server" "frontend" {
+  name        = "frontend"
   server_type = "cx21"
   image       = "ubuntu-22.04"
   location    = "hel1"
@@ -79,7 +77,7 @@ resource "hcloud_server" "node1" {
   }
 
   labels = {
-    purpose = "nomad_node"
+    purpose = "frontend"
   }
 
   depends_on = [
@@ -87,11 +85,11 @@ resource "hcloud_server" "node1" {
   ]
 }
 
-resource "hcloud_server" "node2" {
-  name        = "node2"
+resource "hcloud_server" "backend" {
+  name        = "backend"
   server_type = "cx21"
   image       = "ubuntu-22.04"
-  location    = "fsn1"
+  location    = "hel1"
   ssh_keys    = [data.hcloud_ssh_key.primary-ssh-key.name]
 
   network {
@@ -100,7 +98,7 @@ resource "hcloud_server" "node2" {
   }
 
   labels = {
-    purpose = "nomad_node"
+    purpose = "backend"
   }
 
   depends_on = [
@@ -108,11 +106,11 @@ resource "hcloud_server" "node2" {
   ]
 }
 
-resource "hcloud_server" "node3" {
-  name        = "node3"
+resource "hcloud_server" "database" {
+  name        = "database"
   server_type = "cx21"
   image       = "ubuntu-22.04"
-  location    = "nbg1"
+  location    = "hel1"
   ssh_keys    = [data.hcloud_ssh_key.primary-ssh-key.name]
 
   network {
@@ -121,10 +119,23 @@ resource "hcloud_server" "node3" {
   }
 
   labels = {
-    purpose = "nomad_node"
+    purpose = "database"
   }
 
   depends_on = [
     hcloud_network_subnet.nodes-subnet
   ]
+}
+
+resource "hcloud_volume" "database" {
+  name              = "database"
+  size              = 10
+  server_id         = hcloud_server.database.id
+  automount         = true
+  format            = "ext4"
+  delete_protection = true
+
+  labels = {
+    purpose = "database"
+  }
 }
