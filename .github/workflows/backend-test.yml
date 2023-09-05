@@ -11,8 +11,6 @@ on:
     - main
     paths:
     - 'backend/**'
-    paths-ignore:
-    - '**.md'
 
 jobs:
   test:
