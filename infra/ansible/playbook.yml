@@ -1,0 +1,56 @@
+- name: Install Docker
+  hosts:
+  - frontend
+  - backend
+  - database
+
+  tasks:
+  - name: Add Docker GPG apt Key
+    apt_key:
+      url: https://download.docker.com/linux/ubuntu/gpg
+      state: present
+
+  - name: Add Docker repository
+    apt_repository:
+      repo: deb https://download.docker.com/linux/ubuntu focal stable
+      state: present
+
+  - name: Update apt and install docker-ce
+    apt:
+      name: docker-ce
+      update_cache: true
+
+- name: Install PostgreSQL
+  hosts: database
+
+  tasks:
+  - name: Create data directory
+    file:
+      path: /mnt/HC_Volume_36544800/data
+      state: directory
+
+  - name: Run container
+    docker_container:
+      name: postgres
+      state: started
+      image: "postgres:15.4"
+      ports:
+      - "5432:5432"
+      env:
+        POSTGRES_USER: "{{ postgres_user }}"
+        POSTGRES_PASSWORD: "{{ postgres_password }}"
+        PGDATA: /var/lib/postgresql/data/pgdata
+      volumes:
+      - "/mnt/HC_Volume_36544800/data:/var/lib/postgresql/data/pgdata"
+
+- name: Install Nginx
+  hosts: frontend
+
+  tasks:
+  - name: Run container
+    docker_container:
+      name: nginx
+      state: started
+      image: "nginx:1.25"
+      ports:
+      - "443:443"
