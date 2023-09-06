@@ -43,7 +43,7 @@ public class DatabaseHarness<TProgram, TDbContext> : IHarness<TProgram>
 
         await using var scope = _factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<TDbContext>();
-        await db.Database.MigrateAsync(cancellationToken: cancellationToken);
+        await db.Database.MigrateAsync(cancellationToken);
 
         _started = true;
     }
