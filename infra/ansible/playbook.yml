@@ -1,19 +1,14 @@
 - name: Install Docker
-  hosts:
-  - frontend
-  - backend
-  - database
+  hosts: backend
 
   tasks:
   - name: Add Docker GPG apt Key
     apt_key:
       url: https://download.docker.com/linux/ubuntu/gpg
-      state: present
 
   - name: Add Docker repository
     apt_repository:
       repo: deb https://download.docker.com/linux/ubuntu focal stable
-      state: present
 
   - name: Update apt and install docker-ce
     apt:
@@ -29,28 +24,84 @@
       path: /mnt/HC_Volume_36544800/data
       state: directory
 
-  - name: Run container
-    docker_container:
-      name: postgres
-      state: started
-      image: "postgres:15.4"
-      ports:
-      - "5432:5432"
-      env:
-        POSTGRES_USER: "{{ postgres_user }}"
-        POSTGRES_PASSWORD: "{{ postgres_password }}"
-        PGDATA: /var/lib/postgresql/data/pgdata
-      volumes:
-      - "/mnt/HC_Volume_36544800/data:/var/lib/postgresql/data/pgdata"
+  - name: Set environment variables
+    environment:
+      POSTGRES_USER: "{{ postgres_user }}"
+      POSTGRES_PASSWORD: "{{ postgres_password }}"
+      PGDATA: /mnt/HC_Volume_36544800/data
 
-- name: Install Nginx
+  - name: Install PostgreSQL
+    apt:
+      name: postgresql
+
+- name: Install nginx
   hosts: frontend
 
   tasks:
-  - name: Run container
-    docker_container:
+  - name: Upgrade system
+    apt:
+      upgrade: dist
+      update_cache: yes
+
+  - name: Install python3-simplejson
+    apt:
+      name: python3-simplejson
+
+  - name: Install nginx
+    apt:
       name: nginx
-      state: started
-      image: "nginx:1.25"
-      ports:
-      - "443:443"
+
+  - name: Install certbot
+    apt:
+      name: certbot
+
+  - name: Create Let's Encrypt directory
+    file:
+      name: /var/www/letsencrypt
+      state: directory
+
+  - name: Remove default nginx config
+    file:
+      name: /etc/nginx/sites-enabled/default
+      state: absent
+
+  - name: Install system nginx config
+    template:
+      src: templates/nginx.conf.j2
+      dest: /etc/nginx/nginx.conf
+
+  - name: Install HTTP nginx site for Let's Encrypt requests
+    template:
+      src: templates/nginx-http.j2
+      dest: /etc/nginx/sites-enabled/http
+
+  - name: Reload nginx to activate HTTP site
+    service:
+      name: nginx
+      state: restarted
+
+  - name: Create Let's Encrypt certificate
+    shell: certbot certonly -n --webroot -w /var/www/letsencrypt -m {{ admin_email }} --agree-tos -d {{ domain_name }}
+    args:
+      creates: /etc/letsencrypt/live/{{ domain_name }}
+
+  - name: Generate dhparams
+    shell: openssl dhparam -out /etc/nginx/dhparams.pem 2048
+    args:
+      creates: /etc/nginx/dhparams.pem
+
+  - name: Install nginx site for HTTPS site
+    template:
+      src: templates/nginx-https.j2
+      dest: /etc/nginx/sites-enabled/https
+
+  - name: Reload nginx to activate HTTPS site
+    service:
+      name: nginx
+      state: restarted
+
+  - name: Add certbot cronjob for certificate renewal
+    cron:
+      name: certbot_renewal
+      special_time: weekly
+      job: certbot --renew certonly -n --webroot -w /var/www/certbot -m {{ admin_email }} --agree-tos -d {{ domain_name }} && service nginx reload
