@@ -17,22 +17,65 @@
 
 - name: Install PostgreSQL
   hosts: database
+  vars:
+    postgres_version: "14"
+    postgres_bin_path: "/usr/lib/postgresql/{{ postgres_version }}/bin"
+    postgres_volume_dir: /mnt/HC_Volume_36849556
+    postgres_data_dir: "{{ postgres_volume_dir }}/data"
 
   tasks:
-  - name: Create data directory
-    file:
-      path: /mnt/HC_Volume_36544800/data
-      state: directory
-
-  - name: Set environment variables
-    environment:
-      POSTGRES_USER: "{{ postgres_user }}"
-      POSTGRES_PASSWORD: "{{ postgres_password }}"
-      PGDATA: /mnt/HC_Volume_36544800/data
-
-  - name: Install PostgreSQL
+  - name: Upgrade system
     apt:
+      upgrade: dist
+      update_cache: yes
+
+  - name: Install packages
+    apt:
+      name:
+      - postgresql
+      - postgresql-contrib
+      - libpq-dev
+      - python3-psycopg2
+      state: present
+
+  - name: Set volume directory owner
+    file:
+      path: "{{ postgres_volume_dir }}"
+      owner: postgres
+      group: postgres
+      mode: "755"
+
+  - name: Check if PostgreSQL is initialized
+    stat:
+      path: "{{ postgres_data_dir }}/pg_hba.conf"
+    register: postgres_data
+
+  - name: Empty data dir
+    file:
+      path: "{{ postgres_data_dir }}"
+      state: absent
+    when: not postgres_data.stat.exists
+
+  - name: Initialize PostgreSQL
+    shell: "{{ postgres_bin_path }}/initdb -D {{ postgres_data_dir }}"
+    become: true
+    become_user: postgres
+    when: not postgres_data.stat.exists
+
+  - name: Start and enable service
+    service:
       name: postgresql
+      state: restarted
+      enabled: yes
+
+  - name: Create DB user
+    community.postgresql.postgresql_user:
+      state: present
+      name: "{{ postgres_user }}"
+      password: "{{ postgres_password }}"
+      role_attr_flags: LOGIN,CREATEDB
+    become: true
+    become_user: postgres
 
 - name: Install nginx
   hosts: frontend
