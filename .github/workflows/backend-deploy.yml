@@ -8,8 +8,8 @@ on:
     - 'backend/**'
 
 env:
-    REGISTRY: ghcr.io
-    IMAGE_NAME: webapi
+  REGISTRY: ghcr.io
+  IMAGE_NAME: webapi
 
 jobs:
   build:
@@ -28,7 +28,7 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Extract metadata (tags) for Docker
+    - name: Extract metadata (tags, labels) for Docker
       id: meta
       uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
       with:
@@ -41,3 +41,4 @@ jobs:
         context: ./backend/src/DrimCity
         push: true
         tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
