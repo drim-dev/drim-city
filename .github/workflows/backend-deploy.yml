@@ -4,8 +4,8 @@ on:
   push:
     branches:
     - 8-github-actions-deploy
-    paths:
-    - 'backend/**'
+    # paths:
+    # - 'backend/**'
 
 env:
   REGISTRY: ghcr.io
