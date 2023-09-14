@@ -12,7 +12,7 @@ RUN dotnet restore ./DrimCity.WebApi/DrimCity.WebApi.csproj
 COPY . .
 RUN dotnet build ./DrimCity.WebApi/DrimCity.WebApi.csproj -c Release -o /app/build
 
-RUN dotnet publish DrimCity.WebApi.csproj -c Release -o /app/publish
+RUN dotnet publish ./DrimCity.WebApi/DrimCity.WebApi.csproj -c Release -o /app/publish
 
 FROM base AS final
 
