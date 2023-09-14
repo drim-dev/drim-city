@@ -17,9 +17,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-    defaults:
-      run:
-        working-directory: ./backend/src/DrimCity
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
@@ -34,7 +31,7 @@ jobs:
     - name: Build and push Docker image
       uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
       with:
-        file: ./DrimCity.WebApi/Dockerfile
-        context: .
+        file: ./backend/src/DrimCity/DrimCity.WebApi/Dockerfile
+        context: ./backend/src/DrimCity
         push: true
         tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
