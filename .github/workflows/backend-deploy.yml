@@ -9,7 +9,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: webapi
+  IMAGE_NAME: ${{ github.repository }}/webapi
 
 jobs:
   build:
