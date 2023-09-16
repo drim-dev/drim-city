@@ -29,6 +29,10 @@ server {
     root /var/www/{{ domain_name }};
     index index.html index.htm;
 
+    location /api/ {
+        proxy_pass http://{{ backend_ip }}/;
+    }
+
     location / {
         try_files $uri $uri/ =404;
     }

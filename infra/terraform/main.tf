@@ -1,3 +1,9 @@
+locals {
+  frontend_ip = "10.0.1.1"
+  backend_ip  = "10.0.1.2"
+  database_ip = "10.0.1.3"
+}
+
 data "hcloud_ssh_key" "primary-ssh-key" {
   fingerprint = "6d:8f:78:4e:5f:ba:d9:d0:d5:24:97:1c:a9:c2:95:d9"
 }
@@ -14,8 +20,8 @@ resource "hcloud_network_subnet" "nodes-subnet" {
   ip_range     = "10.0.1.0/24"
 }
 
-resource "hcloud_firewall" "firewall-ingress-ssh" {
-  name   = "firewall-ingress-ssh"
+resource "hcloud_firewall" "firewall-frontend" {
+  name = "firewall-frontend"
 
   rule {
     destination_ips = []
@@ -27,58 +33,6 @@ resource "hcloud_firewall" "firewall-ingress-ssh" {
       "::/0",
     ]
   }
-}
-
-resource "hcloud_firewall" "firewall-ingress-frontend" {
-  name   = "firewall-ingress-frontend"
-
-  rule {
-    destination_ips = []
-    direction       = "in"
-    port            = "80"
-    protocol        = "tcp"
-    source_ips = [
-      "0.0.0.0/0",
-      "::/0",
-    ]
-  }
-
-  rule {
-    destination_ips = []
-    direction       = "in"
-    port            = "80"
-    protocol        = "udp"
-    source_ips = [
-      "0.0.0.0/0",
-      "::/0",
-    ]
-  }
-
-  rule {
-    destination_ips = []
-    direction       = "in"
-    port            = "443"
-    protocol        = "tcp"
-    source_ips = [
-      "0.0.0.0/0",
-      "::/0",
-    ]
-  }
-
-  rule {
-    destination_ips = []
-    direction       = "in"
-    port            = "443"
-    protocol        = "udp"
-    source_ips = [
-      "0.0.0.0/0",
-      "::/0",
-    ]
-  }
-}
-
-resource "hcloud_firewall" "firewall-egress" {
-  name   = "firewall-egress"
 
   rule {
     direction       = "out"
@@ -137,6 +91,238 @@ resource "hcloud_firewall" "firewall-egress" {
     destination_ips = [
       "0.0.0.0/0",
       "::/0",
+    ]
+  }
+
+  rule {
+    destination_ips = []
+    direction       = "in"
+    port            = "80"
+    protocol        = "tcp"
+    source_ips = [
+      "0.0.0.0/0",
+      "::/0",
+    ]
+  }
+
+  rule {
+    destination_ips = []
+    direction       = "in"
+    port            = "80"
+    protocol        = "udp"
+    source_ips = [
+      "0.0.0.0/0",
+      "::/0",
+    ]
+  }
+
+  rule {
+    destination_ips = []
+    direction       = "in"
+    port            = "443"
+    protocol        = "tcp"
+    source_ips = [
+      "0.0.0.0/0",
+      "::/0",
+    ]
+  }
+
+  rule {
+    destination_ips = []
+    direction       = "in"
+    port            = "443"
+    protocol        = "udp"
+    source_ips = [
+      "0.0.0.0/0",
+      "::/0",
+    ]
+  }
+}
+
+resource "hcloud_firewall" "firewall-backend" {
+  name = "firewall-backend"
+
+  rule {
+    destination_ips = []
+    direction       = "in"
+    port            = "22"
+    protocol        = "tcp"
+    source_ips = [
+      "0.0.0.0/0",
+      "::/0",
+    ]
+  }
+
+  rule {
+    direction       = "out"
+    port            = "53"
+    protocol        = "tcp"
+    destination_ips = [
+      "0.0.0.0/0",
+      "::/0",
+    ]
+  }
+
+  rule {
+    direction       = "out"
+    port            = "53"
+    protocol        = "udp"
+    destination_ips = [
+      "0.0.0.0/0",
+      "::/0",
+    ]
+  }
+
+  rule {
+    direction       = "out"
+    port            = "80"
+    protocol        = "tcp"
+    destination_ips = [
+      "0.0.0.0/0",
+      "::/0",
+    ]
+  }
+
+  rule {
+    direction       = "out"
+    port            = "80"
+    protocol        = "udp"
+    destination_ips = [
+      "0.0.0.0/0",
+      "::/0",
+    ]
+  }
+
+  rule {
+    direction       = "out"
+    port            = "443"
+    protocol        = "tcp"
+    destination_ips = [
+      "0.0.0.0/0",
+      "::/0",
+    ]
+  }
+
+  rule {
+    direction       = "out"
+    port            = "443"
+    protocol        = "udp"
+    destination_ips = [
+      "0.0.0.0/0",
+      "::/0",
+    ]
+  }
+
+  rule {
+    destination_ips = []
+    direction       = "in"
+    port            = "80"
+    protocol        = "tcp"
+    source_ips = [
+      "${local.frontend_ip}/32"
+    ]
+  }
+
+  rule {
+    destination_ips = []
+    direction       = "in"
+    port            = "80"
+    protocol        = "udp"
+    source_ips = [
+      "${local.frontend_ip}/32"
+    ]
+  }
+
+  rule {
+    direction       = "out"
+    port            = "5432"
+    protocol        = "tcp"
+    destination_ips = [
+      "${local.database_ip}/32"
+    ]
+  }
+}
+
+resource "hcloud_firewall" "firewall-database" {
+  name = "firewall-database"
+
+  rule {
+    destination_ips = []
+    direction       = "in"
+    port            = "22"
+    protocol        = "tcp"
+    source_ips = [
+      "0.0.0.0/0",
+      "::/0",
+    ]
+  }
+
+  rule {
+    direction       = "out"
+    port            = "53"
+    protocol        = "tcp"
+    destination_ips = [
+      "0.0.0.0/0",
+      "::/0",
+    ]
+  }
+
+  rule {
+    direction       = "out"
+    port            = "53"
+    protocol        = "udp"
+    destination_ips = [
+      "0.0.0.0/0",
+      "::/0",
+    ]
+  }
+
+  rule {
+    direction       = "out"
+    port            = "80"
+    protocol        = "tcp"
+    destination_ips = [
+      "0.0.0.0/0",
+      "::/0",
+    ]
+  }
+
+  rule {
+    direction       = "out"
+    port            = "80"
+    protocol        = "udp"
+    destination_ips = [
+      "0.0.0.0/0",
+      "::/0",
+    ]
+  }
+
+  rule {
+    direction       = "out"
+    port            = "443"
+    protocol        = "tcp"
+    destination_ips = [
+      "0.0.0.0/0",
+      "::/0",
+    ]
+  }
+
+  rule {
+    direction       = "out"
+    port            = "443"
+    protocol        = "udp"
+    destination_ips = [
+      "0.0.0.0/0",
+      "::/0",
+    ]
+  }
+
+  rule {
+    direction       = "in"
+    port            = "5432"
+    protocol        = "tcp"
+    source_ips = [
+      "${local.backend_ip}/32"
     ]
   }
 }
@@ -150,13 +336,11 @@ resource "hcloud_server" "frontend" {
 
   network {
     network_id = hcloud_network.network.id
-    ip         = "10.0.1.1"
+    ip         = local.frontend_ip
   }
 
   firewall_ids = [
-    hcloud_firewall.firewall-ingress-ssh.id,
-    hcloud_firewall.firewall-egress.id,
-    hcloud_firewall.firewall-ingress-frontend.id
+    hcloud_firewall.firewall-frontend.id
   ]
 
   labels = {
@@ -177,12 +361,11 @@ resource "hcloud_server" "backend" {
 
   network {
     network_id = hcloud_network.network.id
-    ip         = "10.0.1.2"
+    ip         = local.backend_ip
   }
 
   firewall_ids = [
-    hcloud_firewall.firewall-ingress-ssh.id,
-    hcloud_firewall.firewall-egress.id
+    hcloud_firewall.firewall-backend.id
   ]
 
   labels = {
@@ -203,12 +386,11 @@ resource "hcloud_server" "database" {
 
   network {
     network_id = hcloud_network.network.id
-    ip         = "10.0.1.3"
+    ip         = local.database_ip
   }
 
   firewall_ids = [
-    hcloud_firewall.firewall-ingress-ssh.id,
-    hcloud_firewall.firewall-egress.id
+    hcloud_firewall.firewall-database.id
   ]
 
   labels = {

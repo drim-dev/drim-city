@@ -3,8 +3,7 @@ name: "web-api"
 services:
   web_api:
     image: ghcr.io/drim-dev/drim-city/webapi:8-github-actions-deploy
-    #restart: always
-    restart: no
+    restart: always
     environment:
       ConnectionStrings__AppDbContext: Host={{ database_ip }};Database=DrimCity.WebApi;Username={{ postgres_user }};Password={{ postgres_password }};Maximum Pool Size=50;Connection Idle Lifetime=60;
     ports:
