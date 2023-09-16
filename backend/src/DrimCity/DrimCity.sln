@@ -1,8 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApi", "WebApi\WebApi.csproj", "{148BDFCF-72C1-4F67-8E61-6EBA91173009}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DrimCity.WebApi", "DrimCity.WebApi\DrimCity.WebApi.csproj", "{148BDFCF-72C1-4F67-8E61-6EBA91173009}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApi.Tests", "WebApi.Tests\WebApi.Tests.csproj", "{23AD296F-F2A6-451F-9FFC-717339497DBA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DrimCity.WebApi.Tests", "DrimCity.WebApi.Tests\DrimCity.WebApi.Tests.csproj", "{23AD296F-F2A6-451F-9FFC-717339497DBA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

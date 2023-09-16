@@ -1,5 +1,7 @@
-- name: Install Docker
+- name: Setup backend
   hosts: backend
+  vars:
+    docker_compose_dir: /srv/drim-city
 
   tasks:
   - name: Add Docker GPG apt Key
@@ -15,11 +17,22 @@
       name: docker-ce
       update_cache: true
 
-- name: Install PostgreSQL
+  - name: Create docker compose directory
+    file:
+      path: "{{ docker_compose_dir }}"
+      state: directory
+
+  - name: Install docker compose config
+    template:
+      src: templates/docker-compose.yml.j2
+      dest: "{{ docker_compose_dir }}/docker-compose.yml"
+
+- name: Setup database
   hosts: database
   vars:
     postgres_version: "14"
     postgres_bin_path: "/usr/lib/postgresql/{{ postgres_version }}/bin"
+    postgres_config_dir: "/etc/postgresql/{{ postgres_version }}/main"
     postgres_volume_dir: /mnt/HC_Volume_36849556
     postgres_data_dir: "{{ postgres_volume_dir }}/data"
 
@@ -62,10 +75,29 @@
     become_user: postgres
     when: not postgres_data.stat.exists
 
+  - name: Stop service
+    service:
+      name: postgresql
+      state: stopped
+      enabled: yes
+
+  - name: Allow connections from backend
+    lineinfile:
+      state: present
+      path: "{{ postgres_config_dir }}/pg_hba.conf"
+      line: "host all {{ postgres_user }} {{ backend_ip }}/32 scram-sha-256"
+
+  - name: Allow connections from internal network
+    lineinfile:
+      path: "{{ postgres_config_dir }}/postgresql.conf"
+      regexp: "^(.*)listen_addresses(.*)$"
+      line: "listen_addresses = '{{ database_ip }}, localhost'"
+      backrefs: yes
+
   - name: Start and enable service
     service:
       name: postgresql
-      state: restarted
+      state: started
       enabled: yes
 
   - name: Create DB user
@@ -77,7 +109,7 @@
     become: true
     become_user: postgres
 
-- name: Install nginx
+- name: Setup frontend
   hosts: frontend
 
   tasks:
