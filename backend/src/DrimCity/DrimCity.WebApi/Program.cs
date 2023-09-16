@@ -25,9 +25,8 @@ app.MapProblemDetails();
 
 app.MapEndpoints();
 
+await app.MigrateDatabase();
+
 app.Run();
 
-namespace DrimCity.WebApi
-{
-    public partial class Program {}
-}
+public partial class Program {}

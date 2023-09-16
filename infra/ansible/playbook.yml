@@ -1,5 +1,7 @@
 - name: Install Docker
   hosts: backend
+  vars:
+    docker_compose_dir: /srv/drim-city
 
   tasks:
   - name: Add Docker GPG apt Key
@@ -14,6 +16,16 @@
     apt:
       name: docker-ce
       update_cache: true
+
+  - name: Create docker compose directory
+    file:
+      path: "{{ docker_compose_dir }}"
+      state: directory
+
+  - name: Install docker compose config
+    template:
+      src: templates/docker-compose.yml.j2
+      dest: "{{ docker_compose_dir }}/docker-compose.yml"
 
 - name: Install PostgreSQL
   hosts: database

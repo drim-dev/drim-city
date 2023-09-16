@@ -12,33 +12,57 @@ env:
   IMAGE_NAME: ${{ github.repository }}/webapi
 
 jobs:
-  build:
+  # build:
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
+  #     packages: write
+  #   steps:
+  #   - name: Checkout repository
+  #     uses: actions/checkout@v3
+
+  #   - name: Log in to the Container registry
+  #     uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+  #     with:
+  #       registry: ${{ env.REGISTRY }}
+  #       username: ${{ github.actor }}
+  #       password: ${{ secrets.GITHUB_TOKEN }}
+
+  #   - name: Extract metadata (tags, labels) for Docker
+  #     id: meta
+  #     uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+  #     with:
+  #       images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+  #   - name: Build and push Docker image
+  #     uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
+  #     with:
+  #       file: ./backend/src/DrimCity/DrimCity.WebApi/Dockerfile
+  #       context: ./backend/src/DrimCity
+  #       push: true
+  #       tags: ${{ steps.meta.outputs.tags }}
+  #       labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      packages: write
+      packages: read
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
-
-    - name: Log in to the Container registry
-      uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
     - name: Extract metadata (tags, labels) for Docker
       id: meta
       uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
-    - name: Build and push Docker image
-      uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
+    - name: Pull Docker image
+      uses: appleboy/ssh-action@v0.1.10
       with:
-        file: ./backend/src/DrimCity/DrimCity.WebApi/Dockerfile
-        context: ./backend/src/DrimCity
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
+        host: ${{ secrets.BACKEND_HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_KEY }}
+        port: 22
+        command_timeout: 10m
+        script: |
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          cd /srv/drim-city && docker compose pull web_api
+          cd /srv/drim-city && docker compose restart
