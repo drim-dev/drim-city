@@ -55,14 +55,13 @@ jobs:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
     - name: Pull Docker image
-      uses: garygrossgarten/github-action-ssh@release
+      uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.BACKEND_HOST }}
         username: ${{ secrets.USERNAME }}
-        privateKey: ${{ secrets.SSH_KEY }}
+        key: ${{ secrets.SSH_KEY }}
         passphrase: ${{ secrets.SSH_PASSPHRASE }}
-        command: ls -a
-        # script: |
-        #   echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-        #   cd /srv/drim-city && docker compose pull web_api
-        #   cd /srv/drim-city && docker compose restart
+        script: |
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          cd /srv/drim-city && docker compose pull web_api
+          cd /srv/drim-city && docker compose restart
