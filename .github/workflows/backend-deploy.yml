@@ -44,6 +44,7 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
 
   deploy:
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       packages: read
