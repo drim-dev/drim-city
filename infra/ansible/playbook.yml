@@ -1,31 +1,31 @@
-# - name: Setup backend
-#   hosts: backend
-#   vars:
-#     docker_compose_dir: /srv/drim-city
+- name: Setup backend
+  hosts: backend
+  vars:
+    docker_compose_dir: /srv/drim-city
 
-#   tasks:
-#   - name: Add Docker GPG apt Key
-#     apt_key:
-#       url: https://download.docker.com/linux/ubuntu/gpg
+  tasks:
+  - name: Add Docker GPG apt Key
+    apt_key:
+      url: https://download.docker.com/linux/ubuntu/gpg
 
-#   - name: Add Docker repository
-#     apt_repository:
-#       repo: deb https://download.docker.com/linux/ubuntu focal stable
+  - name: Add Docker repository
+    apt_repository:
+      repo: deb https://download.docker.com/linux/ubuntu focal stable
 
-#   - name: Update apt and install docker-ce
-#     apt:
-#       name: docker-ce
-#       update_cache: true
+  - name: Update apt and install docker-ce
+    apt:
+      name: docker-ce
+      update_cache: true
 
-#   - name: Create docker compose directory
-#     file:
-#       path: "{{ docker_compose_dir }}"
-#       state: directory
+  - name: Create docker compose directory
+    file:
+      path: "{{ docker_compose_dir }}"
+      state: directory
 
-#   - name: Install docker compose config
-#     template:
-#       src: templates/docker-compose.yml.j2
-#       dest: "{{ docker_compose_dir }}/docker-compose.yml"
+  - name: Install docker compose config
+    template:
+      src: templates/docker-compose.yml.j2
+      dest: "{{ docker_compose_dir }}/docker-compose.yml"
 
 - name: Setup database
   hosts: database
@@ -81,21 +81,11 @@
       state: stopped
       enabled: yes
 
-  # - name: Check if connections from backend allowed
-  #   lineinfile:
-  #     state: absent
-  #     path: "{{ postgres_data_dir }}/pg_hba.conf"
-  #     regexp: "^host all all {{ backend_ip }}/32 scram-sha-256"
-  #   check_mode: true
-  #   changed_when: false
-  #   register: backend_connections_check
-
   - name: Allow connections from backend
     lineinfile:
       state: present
-      path: "{{ postgres_data_dir }}/pg_hba.conf"
-      line: "host all all {{ backend_ip }}/32 scram-sha-256"
-    #when: backend_connections_check.found == 0
+      path: "{{ postgres_config_dir }}/pg_hba.conf"
+      line: "host all {{ postgres_user }} {{ backend_ip }}/32 scram-sha-256"
 
   - name: Allow connections from internal network
     lineinfile:
@@ -119,74 +109,74 @@
     become: true
     become_user: postgres
 
-# - name: Setup frontend
-#   hosts: frontend
+- name: Setup frontend
+  hosts: frontend
 
-#   tasks:
-#   - name: Upgrade system
-#     apt:
-#       upgrade: dist
-#       update_cache: yes
+  tasks:
+  - name: Upgrade system
+    apt:
+      upgrade: dist
+      update_cache: yes
 
-#   - name: Install python3-simplejson
-#     apt:
-#       name: python3-simplejson
+  - name: Install python3-simplejson
+    apt:
+      name: python3-simplejson
 
-#   - name: Install nginx
-#     apt:
-#       name: nginx
+  - name: Install nginx
+    apt:
+      name: nginx
 
-#   - name: Install certbot
-#     apt:
-#       name: certbot
+  - name: Install certbot
+    apt:
+      name: certbot
 
-#   - name: Create Let's Encrypt directory
-#     file:
-#       name: /var/www/letsencrypt
-#       state: directory
+  - name: Create Let's Encrypt directory
+    file:
+      name: /var/www/letsencrypt
+      state: directory
 
-#   - name: Remove default nginx config
-#     file:
-#       name: /etc/nginx/sites-enabled/default
-#       state: absent
+  - name: Remove default nginx config
+    file:
+      name: /etc/nginx/sites-enabled/default
+      state: absent
 
-#   - name: Install system nginx config
-#     template:
-#       src: templates/nginx.conf.j2
-#       dest: /etc/nginx/nginx.conf
+  - name: Install system nginx config
+    template:
+      src: templates/nginx.conf.j2
+      dest: /etc/nginx/nginx.conf
 
-#   - name: Install HTTP nginx site for Let's Encrypt requests
-#     template:
-#       src: templates/nginx-http.j2
-#       dest: /etc/nginx/sites-enabled/http
+  - name: Install HTTP nginx site for Let's Encrypt requests
+    template:
+      src: templates/nginx-http.j2
+      dest: /etc/nginx/sites-enabled/http
 
-#   - name: Reload nginx to activate HTTP site
-#     service:
-#       name: nginx
-#       state: restarted
+  - name: Reload nginx to activate HTTP site
+    service:
+      name: nginx
+      state: restarted
 
-#   - name: Create Let's Encrypt certificate
-#     shell: certbot certonly -n --webroot -w /var/www/letsencrypt -m {{ admin_email }} --agree-tos -d {{ domain_name }}
-#     args:
-#       creates: /etc/letsencrypt/live/{{ domain_name }}
+  - name: Create Let's Encrypt certificate
+    shell: certbot certonly -n --webroot -w /var/www/letsencrypt -m {{ admin_email }} --agree-tos -d {{ domain_name }}
+    args:
+      creates: /etc/letsencrypt/live/{{ domain_name }}
 
-#   - name: Generate dhparams
-#     shell: openssl dhparam -out /etc/nginx/dhparams.pem 2048
-#     args:
-#       creates: /etc/nginx/dhparams.pem
+  - name: Generate dhparams
+    shell: openssl dhparam -out /etc/nginx/dhparams.pem 2048
+    args:
+      creates: /etc/nginx/dhparams.pem
 
-#   - name: Install nginx site for HTTPS site
-#     template:
-#       src: templates/nginx-https.j2
-#       dest: /etc/nginx/sites-enabled/https
+  - name: Install nginx site for HTTPS site
+    template:
+      src: templates/nginx-https.j2
+      dest: /etc/nginx/sites-enabled/https
 
-#   - name: Reload nginx to activate HTTPS site
-#     service:
-#       name: nginx
-#       state: restarted
+  - name: Reload nginx to activate HTTPS site
+    service:
+      name: nginx
+      state: restarted
 
-#   - name: Add certbot cronjob for certificate renewal
-#     cron:
-#       name: certbot_renewal
-#       special_time: weekly
-#       job: certbot --renew certonly -n --webroot -w /var/www/certbot -m {{ admin_email }} --agree-tos -d {{ domain_name }} && service nginx reload
+  - name: Add certbot cronjob for certificate renewal
+    cron:
+      name: certbot_renewal
+      special_time: weekly
+      job: certbot --renew certonly -n --webroot -w /var/www/certbot -m {{ admin_email }} --agree-tos -d {{ domain_name }} && service nginx reload
