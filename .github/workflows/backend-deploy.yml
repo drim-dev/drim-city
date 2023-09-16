@@ -6,7 +6,7 @@ on:
     - main
     paths:
     - 'backend/**'
-    - '.github/workflows/backend/**'
+    - '.github/workflows/backend*'
 
 env:
   REGISTRY: ghcr.io
