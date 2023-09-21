@@ -4,6 +4,7 @@ using DrimCity.WebApi.Features.Posts.Models;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+
 using static DrimCity.WebApi.Features.Posts.Errors.PostsValidationErrors;
 
 namespace DrimCity.WebApi.Features.Posts.Requests;
@@ -38,6 +39,7 @@ public static class GetPostById
     public class RequestHandler : IRequestHandler<Request, PostModel>
     {
         private readonly AppDbContext _appDbContext;
+
         public RequestHandler(AppDbContext appDbContext) 
         {
             _appDbContext = appDbContext;
