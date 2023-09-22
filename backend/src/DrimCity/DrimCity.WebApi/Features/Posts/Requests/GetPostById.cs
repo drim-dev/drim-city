@@ -3,6 +3,8 @@ using DrimCity.WebApi.Database;
 using DrimCity.WebApi.Features.Posts.Models;
 using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 using static DrimCity.WebApi.Features.Posts.Errors.PostsValidationErrors;
@@ -13,10 +15,15 @@ public static class GetPostById
 {
     public class Endpoint : IEndpoint
     {
-        private const string path = "/posts/get-post-by-id";
+        private const string Path = "/posts/get-post-by-id";
         public void MapEndpoint(WebApplication app)
         {
-            
+            app.MapGet(Path, async Task<Results<Created<PostModel>, BadRequest<ProblemDetails>>>
+                (IMediator mediator, Request request, CancellationToken cancellationToken) =>
+            {
+                var post = await mediator.Send(request, cancellationToken);
+                return TypedResults.Created($"{Path}/{post.Slug}", post);
+            });
         }
     }
 
