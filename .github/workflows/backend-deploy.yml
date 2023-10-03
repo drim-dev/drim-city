@@ -6,7 +6,7 @@ on:
     - main
     paths:
     - 'backend/**'
-    - '.github/workflows/backend/**'
+    - '.github/workflows/backend*'
 
 env:
   REGISTRY: ghcr.io
@@ -64,7 +64,7 @@ jobs:
     - name: Build and push Docker image
       uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
       with:
-        file: ./backend/src/DrimCity/DrimCity.WebApi/Dockerfile
+        file: ./backend/src/DrimCity/DrimCity/DrimCity.WebApi/Dockerfile
         context: ./backend/src/DrimCity
         push: true
         tags: ${{ steps.meta.outputs.tags }}
