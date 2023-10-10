@@ -26,9 +26,5 @@
     <ItemGroup>
       <ProjectReference Include="..\..\Common\Common.Web\Common.Web.csproj" />
     </ItemGroup>
-    
-    <ItemGroup>
-      <ProjectReference Include="..\..\Common\Common.Web\Common.Web.csproj" />
-    </ItemGroup>
 
 </Project>
