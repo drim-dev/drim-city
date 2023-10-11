@@ -5,10 +5,12 @@ using Common.Tests.Http.Extensions;
 using Common.Tests.Http.Harnesses;
 using DrimCity.WebApi.Database;
 using DrimCity.WebApi.Domain;
+using DrimCity.WebApi.Features.Posts.Requests;
 using DrimCity.WebApi.Tests.Features.Posts.Contracts;
 using DrimCity.WebApi.Tests.Fixtures;
 using FluentAssertions;
 using FluentAssertions.Extensions;
+using FluentValidation.TestHelper;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -81,3 +83,35 @@ public class AddCommentTests : IAsyncLifetime
 }
 
 public record CreateCommentRequestContract(string Content);
+
+public class AddCommentValidatorTests
+{
+    private readonly AddComment.RequestValidator _validator = new();
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void Should_have_error_when_content_empty(string content)
+    {
+        var request = new AddComment.Request(content);
+
+        var result = _validator.TestValidate(request);
+
+        result
+            .ShouldHaveValidationErrorFor(x => x.Content)
+            .WithErrorCode("posts:validation:comment_content_required");
+    }
+
+    [Fact]
+    public void Should_have_error_when_content_exceeds_max_length()
+    {
+        var request = new AddComment.Request(new string('a', 10_001));
+
+        var result = _validator.TestValidate(request);
+
+        result
+            .ShouldHaveValidationErrorFor(x => x.Content)
+            .WithErrorCode("posts:validation:comment_content_exceeds_max_length");
+    }
+}

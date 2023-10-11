@@ -7,6 +7,7 @@ using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using static DrimCity.WebApi.Features.Posts.Errors.PostsValidationErrors;
 
 namespace DrimCity.WebApi.Features.Posts.Requests;
 
@@ -34,6 +35,12 @@ public static class AddComment
 
     public class RequestValidator : AbstractValidator<Request>
     {
+        public RequestValidator()
+        {
+            RuleFor(x => x.Content)
+                .NotEmpty().WithErrorCode(CommentContentRequired)
+                .MaximumLength(Comment.ContentMaxLength).WithErrorCode(CommentContentExceedsMaxLength);
+        }
     }
 
     public class RequestHandler : IRequestHandler<Request, CommentModel>
