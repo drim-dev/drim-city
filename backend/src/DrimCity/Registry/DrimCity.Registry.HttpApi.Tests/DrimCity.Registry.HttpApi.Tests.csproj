@@ -16,4 +16,8 @@
       <Folder Include="Features\" />
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.7.2" />
+    </ItemGroup>
+
 </Project>
