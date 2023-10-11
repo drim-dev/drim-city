@@ -7,6 +7,7 @@ public class AppDbContext : DbContext
 {
     public DbSet<Post> Posts { get; set; }
     public DbSet<Account> Accounts { get; set; }
+    public DbSet<Comment> Comments { get; set; }
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
@@ -16,6 +17,7 @@ public class AppDbContext : DbContext
     {
         MapAccount(modelBuilder);
         MapPost(modelBuilder);
+        MapComment(modelBuilder);
     }
 
     private static void MapAccount(ModelBuilder modelBuilder)
@@ -71,6 +73,35 @@ public class AppDbContext : DbContext
 
             post.HasIndex(x => x.Slug)
                 .IsUnique();
+        });
+    }
+
+    private static void MapComment(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Comment>(commentEntity =>
+        {
+            commentEntity.HasKey(x => x.Id);
+
+            commentEntity.Property(x => x.Id)
+                .UseIdentityAlwaysColumn();
+
+            commentEntity.Property(x => x.Content)
+                .IsRequired()
+                .HasMaxLength(Comment.ContentMaxLength);
+
+            commentEntity.Property(x => x.CreatedAt)
+                .IsRequired();
+
+            commentEntity.Property(x => x.AuthorId)
+                .IsRequired();
+
+            commentEntity.Property(x => x.PostId)
+                .IsRequired();
+
+            commentEntity
+                .HasOne<Post>()
+                .WithMany()
+                .HasForeignKey(comment => comment.PostId);
         });
     }
 }
