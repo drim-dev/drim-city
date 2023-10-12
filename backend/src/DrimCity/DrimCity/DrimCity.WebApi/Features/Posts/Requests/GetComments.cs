@@ -18,13 +18,13 @@ public static class GetComments
                 async Task<Results<Ok<CommentModel[]>, NotFound<ProblemDetails>>> (IMediator mediator, string slug,
                     CancellationToken cancellationToken) =>
                 {
-                    var comments = await mediator.Send(new Request(), cancellationToken);
+                    var comments = await mediator.Send(new Request(slug), cancellationToken);
                     return TypedResults.Ok(comments);
                 });
         }
     }
 
-    public record Request : IRequest<CommentModel[]>;
+    public record Request(string PostSlug) : IRequest<CommentModel[]>;
 
     public class RequestHandler : IRequestHandler<Request, CommentModel[]>
     {
@@ -37,8 +37,9 @@ public static class GetComments
 
         public async Task<CommentModel[]> Handle(Request request, CancellationToken cancellationToken)
         {
-            //todo filter by post slug
             var comments = await _dbContext.Comments
+                .Include(x => x.Post)
+                .Where(x => x.Post.Slug == request.PostSlug)
                 .Select(x => new CommentModel(x.Id, x.Content, x.CreatedAt, x.AuthorId))
                 .ToArrayAsync(cancellationToken);
 

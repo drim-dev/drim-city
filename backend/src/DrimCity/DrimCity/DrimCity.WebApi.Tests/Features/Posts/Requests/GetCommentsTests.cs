@@ -6,6 +6,7 @@ using DrimCity.WebApi.Database;
 using DrimCity.WebApi.Domain;
 using DrimCity.WebApi.Features.Posts.Models;
 using DrimCity.WebApi.Tests.Fixtures;
+using FluentAssertions.Equivalency;
 
 namespace DrimCity.WebApi.Tests.Features.Posts.Requests;
 
@@ -34,7 +35,7 @@ public class GetCommentsTests : IAsyncLifetime
     [Fact]
     private async Task Should_return_comments()
     {
-        var post = await CreatePost();
+        var post = await CreatePost("postSlug");
         var comments = await CreateComments(post, 3);
 
         var (responseComments, httpResponse) = await Act(post);
@@ -42,10 +43,23 @@ public class GetCommentsTests : IAsyncLifetime
         httpResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         responseComments.Should().NotBeNullOrEmpty();
 
-        responseComments.Should().BeEquivalentTo(comments,
-            config => config
-                .Excluding(comment => comment.PostId)
-                .Excluding(comment => comment.Post));
+        responseComments.Should().BeEquivalentTo(comments, CommentEquivalencyOptions);
+    }
+
+    [Fact]
+    private async Task Should_return_comments_only_by_post_in_request()
+    {
+        var unexpectedPost = await CreatePost("unexpectedPostSlug");
+        var unexpectedComments = await CreateComments(unexpectedPost, 1);
+        var expectedPost = await CreatePost("expectedPostSlug");
+        var expectedComments = await CreateComments(expectedPost, 1);
+
+        var (responseComments, _) = await Act(expectedPost);
+
+        responseComments.Should().NotBeNullOrEmpty();
+
+        responseComments!.Select(x => x.Id).Should().NotContain(unexpectedComments.Select(x => x.Id));
+        responseComments!.Select(x => x.Id).Should().Contain(expectedComments.Select(x => x.Id));
     }
 
     private async Task<(CommentModel[]?, HttpResponseMessage httpResponse)> Act(Post post)
@@ -54,11 +68,11 @@ public class GetCommentsTests : IAsyncLifetime
         return await httpClient.GetTyped<CommentModel[]>($"/posts/{post.Slug}/comments", CreateCancellationToken());
     }
 
-    private async Task<Post> CreatePost()
+    private async Task<Post> CreatePost(string slug)
     {
         return await _database.Execute(async dbContext =>
         {
-            var post = new Post(0, "anyTitle", "anyContent", DateTime.UtcNow, 0, "postSlug");
+            var post = new Post(0, "anyTitle", "anyContent", DateTime.UtcNow, 0, slug);
             await dbContext.Posts.AddAsync(post, CreateCancellationToken());
             await dbContext.SaveChangesAsync();
             return post;
@@ -78,5 +92,12 @@ public class GetCommentsTests : IAsyncLifetime
 
             return comments;
         });
+    }
+
+    private EquivalencyAssertionOptions<Comment> CommentEquivalencyOptions(EquivalencyAssertionOptions<Comment> config)
+    {
+        return config
+            .Excluding(comment => comment.PostId)
+            .Excluding(comment => comment.Post);
     }
 }
