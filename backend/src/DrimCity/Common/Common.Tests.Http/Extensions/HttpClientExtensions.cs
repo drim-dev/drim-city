@@ -10,6 +10,21 @@ public static class HttpClientExtensions
     {
         var httpResponse = await client.PostAsJsonAsync(url, body, cancellationToken);
 
+        return await GetDeserializedAndHttpResponse<TResponse>(httpResponse, cancellationToken);
+    }
+
+    public static async Task<(TResponse?, HttpResponseMessage httpResponse)> GetTyped<TResponse>(
+        this HttpClient client, string url,
+        CancellationToken cancellationToken)
+    {
+        var httpResponse = await client.GetAsync(url, cancellationToken);
+
+        return await GetDeserializedAndHttpResponse<TResponse>(httpResponse, cancellationToken);
+    }
+
+    private static async Task<(TResponse? response, HttpResponseMessage httpResponse)>
+        GetDeserializedAndHttpResponse<TResponse>(HttpResponseMessage httpResponse, CancellationToken cancellationToken)
+    {
         if (!httpResponse.IsSuccessStatusCode)
         {
             return (default, httpResponse);
