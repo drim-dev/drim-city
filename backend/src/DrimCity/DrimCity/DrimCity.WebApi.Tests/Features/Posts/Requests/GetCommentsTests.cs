@@ -38,7 +38,7 @@ public class GetCommentsTests : IAsyncLifetime
         var post = await CreatePost("postSlug");
         var comments = await CreateComments(post, 3);
 
-        var (responseComments, httpResponse) = await Act(post);
+        var (responseComments, httpResponse) = await Act(post.Slug);
 
         httpResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         responseComments.Should().NotBeNullOrEmpty();
@@ -54,7 +54,7 @@ public class GetCommentsTests : IAsyncLifetime
         var expectedPost = await CreatePost("expectedPostSlug");
         var expectedComments = await CreateComments(expectedPost, 1);
 
-        var (responseComments, _) = await Act(expectedPost);
+        var (responseComments, _) = await Act(expectedPost.Slug);
 
         responseComments.Should().NotBeNullOrEmpty();
 
@@ -62,10 +62,19 @@ public class GetCommentsTests : IAsyncLifetime
         responseComments!.Select(x => x.Id).Should().Contain(expectedComments.Select(x => x.Id));
     }
 
-    private async Task<(CommentModel[]?, HttpResponseMessage httpResponse)> Act(Post post)
+    [Fact]
+    private async Task Should_return_not_found_when_post_does_not_exist()
+    {
+        var (responseComments, httpResponse) = await Act("notExistingPostSlug");
+
+        httpResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        responseComments.Should().BeNull();
+    }
+
+    private async Task<(CommentModel[]?, HttpResponseMessage httpResponse)> Act(string postSlug)
     {
         var httpClient = _httpClientHarness.CreateClient();
-        return await httpClient.GetTyped<CommentModel[]>($"/posts/{post.Slug}/comments", CreateCancellationToken());
+        return await httpClient.GetTyped<CommentModel[]>($"/posts/{postSlug}/comments", CreateCancellationToken());
     }
 
     private async Task<Post> CreatePost(string slug)

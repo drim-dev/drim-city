@@ -15,18 +15,21 @@ public static class GetComments
         public void MapEndpoint(WebApplication app)
         {
             app.MapGet("/posts/{slug}/comments",
-                async Task<Results<Ok<CommentModel[]>, NotFound<ProblemDetails>>> (IMediator mediator, string slug,
-                    CancellationToken cancellationToken) =>
+                async Task<Results<Ok<CommentModel[]>, NotFound, BadRequest<ProblemDetails>>> (IMediator mediator,
+                    string slug, CancellationToken cancellationToken) =>
                 {
                     var comments = await mediator.Send(new Request(slug), cancellationToken);
-                    return TypedResults.Ok(comments);
+
+                    return comments is null
+                        ? TypedResults.NotFound()
+                        : TypedResults.Ok(comments);
                 });
         }
     }
 
-    public record Request(string PostSlug) : IRequest<CommentModel[]>;
+    public record Request(string PostSlug) : IRequest<CommentModel[]?>;
 
-    public class RequestHandler : IRequestHandler<Request, CommentModel[]>
+    public class RequestHandler : IRequestHandler<Request, CommentModel[]?>
     {
         private readonly AppDbContext _dbContext;
 
@@ -35,11 +38,20 @@ public static class GetComments
             _dbContext = dbContext;
         }
 
-        public async Task<CommentModel[]> Handle(Request request, CancellationToken cancellationToken)
+        public async Task<CommentModel[]?> Handle(Request request, CancellationToken cancellationToken)
         {
+            var post = await _dbContext.Posts
+                .Where(post => post.Slug == request.PostSlug)
+                .Select(post => new { post.Id })
+                .SingleOrDefaultAsync(cancellationToken);
+
+            if (post is null)
+            {
+                return null;
+            }
+
             var comments = await _dbContext.Comments
-                .Include(x => x.Post)
-                .Where(x => x.Post.Slug == request.PostSlug)
+                .Where(x => x.PostId == post.Id)
                 .Select(x => new CommentModel(x.Id, x.Content, x.CreatedAt, x.AuthorId))
                 .ToArrayAsync(cancellationToken);
 
