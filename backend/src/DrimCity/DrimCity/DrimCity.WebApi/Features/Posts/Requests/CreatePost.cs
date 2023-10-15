@@ -35,11 +35,17 @@ public static class CreatePost
         public RequestValidator()
         {
             RuleFor(x => x.Title)
-                .NotEmpty().WithErrorCode(TitleRequired)
-                .MaximumLength(Post.TitleMaxLength).WithErrorCode(TitleExceedsMaxLength);
+                .NotEmpty()
+                    .WithErrorCode(TitleRequired)
+                .MaximumLength(Post.TitleMaxLength)
+                    .WithMessage($"Title length must be less or equal than {Post.TitleMaxLength}")
+                    .WithErrorCode(TitleMustBeLessOrEqualMaxLength);
             RuleFor(x => x.Content)
-                .NotEmpty().WithErrorCode(ContentRequired)
-                .MaximumLength(Post.ContentMaxLength).WithErrorCode(ContentExceedsMaxLength);
+                .NotEmpty()
+                    .WithErrorCode(ContentRequired)
+                .MaximumLength(Post.ContentMaxLength)
+                    .WithMessage($"Content length must be less or equal than {Post.ContentMaxLength}")
+                    .WithErrorCode(ContentMustBeLessOrEqualMaxLength);
         }
     }
 

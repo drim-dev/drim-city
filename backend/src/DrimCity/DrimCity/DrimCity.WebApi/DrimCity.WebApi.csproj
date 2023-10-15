@@ -14,6 +14,7 @@
     </ItemGroup>
     
     <ItemGroup>
+      <PackageReference Include="Isopoh.Cryptography.Argon2" Version="2.0.0" />
       <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="7.0.11">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

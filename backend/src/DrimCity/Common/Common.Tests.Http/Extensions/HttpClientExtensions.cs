@@ -10,6 +10,11 @@ public static class HttpClientExtensions
     {
         var httpResponse = await client.PostAsJsonAsync(url, body, cancellationToken);
 
+        if (!httpResponse.IsSuccessStatusCode)
+        {
+            return (default, httpResponse);
+        }
+
         var responseString = await httpResponse.Content.ReadAsStringAsync(cancellationToken);
         var response = JsonSerializer.Deserialize<TResponse>(responseString, new JsonSerializerOptions
         {
