@@ -3,6 +3,7 @@ using Common.Web.Endpoints;
 using Common.Web.Errors;
 using Common.Web.Validation.Behaviors;
 using DrimCity.WebApi.Database;
+using DrimCity.WebApi.Features.Accounts.Extensions;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,6 +19,8 @@ builder.Services.AddMediatR(cfg => cfg
     .AddOpenBehavior(typeof(ValidationBehavior<,>)));
 
 builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+
+builder.AddAccounts();
 
 var app = builder.Build();
 

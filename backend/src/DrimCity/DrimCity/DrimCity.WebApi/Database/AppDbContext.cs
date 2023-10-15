@@ -6,6 +6,7 @@ namespace DrimCity.WebApi.Database;
 public class AppDbContext : DbContext
 {
     public DbSet<Post> Posts { get; set; }
+    public DbSet<Account> Accounts { get; set; }
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
@@ -13,7 +14,32 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        MapAccount(modelBuilder);
         MapPost(modelBuilder);
+    }
+
+    private static void MapAccount(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Account>(account =>
+        {
+            account.HasKey(x => x.Id);
+
+            account.Property(x => x.Id)
+                .UseIdentityAlwaysColumn();
+
+            account.Property(x => x.Login)
+                .IsRequired()
+                .HasMaxLength(Account.LoginMaxLength);
+
+            account.Property(x => x.PasswordHash)
+                .IsRequired();
+
+            account.Property(x => x.CreatedAt)
+                .IsRequired();
+
+            account.HasIndex(x => x.Login)
+                .IsUnique();
+        });
     }
 
     private static void MapPost(ModelBuilder modelBuilder)

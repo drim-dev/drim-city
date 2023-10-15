@@ -1,6 +1,4 @@
 ﻿using DrimCity.WebApi.Features.Posts.Services;
-using FluentAssertions;
-using Xunit;
 
 namespace DrimCity.WebApi.Tests.Features.Posts.Services;
 

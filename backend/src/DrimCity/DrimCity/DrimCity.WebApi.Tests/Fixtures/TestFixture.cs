@@ -27,6 +27,11 @@ public class TestFixture : IAsyncLifetime
     public DatabaseHarness<Program, AppDbContext> Database { get; }
     public HttpClientHarness<Program> HttpClient { get; }
 
+    public async Task Reset(CancellationToken cancellationToken)
+    {
+        await Database.Clear(cancellationToken);
+    }
+
     public async Task InitializeAsync()
     {
         await Database.Start(_factory, CreateCancellationToken(60));

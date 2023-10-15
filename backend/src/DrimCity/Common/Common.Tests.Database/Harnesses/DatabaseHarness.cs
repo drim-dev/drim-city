@@ -1,4 +1,6 @@
-﻿using System.Data;
+﻿using System.Collections;
+using System.Data;
+using System.Linq.Expressions;
 using Common.Tests.Harnesses;
 using DotNet.Testcontainers.Builders;
 using Microsoft.AspNetCore.Hosting;
@@ -41,10 +43,6 @@ public class DatabaseHarness<TProgram, TDbContext> : IHarness<TProgram>
 
         await _postgres.StartAsync(cancellationToken);
 
-        await using var scope = _factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<TDbContext>();
-        await db.Database.MigrateAsync(cancellationToken);
-
         _started = true;
     }
 
@@ -57,6 +55,24 @@ public class DatabaseHarness<TProgram, TDbContext> : IHarness<TProgram>
         }
 
         _started = false;
+    }
+
+    public async Task Migrate(CancellationToken cancellationToken)
+    {
+        ThrowIfNotStarted();
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<TDbContext>();
+        await db.Database.MigrateAsync(cancellationToken);
+    }
+
+    public async Task<T?> SingleOrDefault<T>(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken)
+        where T : class
+    {
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<TDbContext>();
+
+        return await db.Set<T>().SingleOrDefaultAsync(predicate, cancellationToken);
     }
 
     public async Task Execute(Func<TDbContext, Task> action)
@@ -78,6 +94,26 @@ public class DatabaseHarness<TProgram, TDbContext> : IHarness<TProgram>
         await using var scope = _factory!.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<TDbContext>();
         return await action(db);
+    }
+
+    public async Task Save(params object[] entities)
+    {
+        ThrowIfNotStarted();
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        await using var dbContext = scope.ServiceProvider.GetRequiredService<TDbContext>();
+
+        var collections = entities.OfType<IEnumerable>();
+
+        foreach (var collection in collections)
+        {
+            dbContext.AddRange(collection);
+        }
+
+        var singleEntities = entities.Where(e => e is not IEnumerable);
+
+        dbContext.AddRange(singleEntities);
+        await dbContext.SaveChangesAsync();
     }
 
     public async Task Clear(CancellationToken cancellationToken)
