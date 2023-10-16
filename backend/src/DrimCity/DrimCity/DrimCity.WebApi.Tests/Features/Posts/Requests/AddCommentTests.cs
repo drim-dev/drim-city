@@ -8,11 +8,7 @@ using DrimCity.WebApi.Domain;
 using DrimCity.WebApi.Features.Posts.Requests;
 using DrimCity.WebApi.Tests.Features.Posts.Contracts;
 using DrimCity.WebApi.Tests.Fixtures;
-using FluentAssertions;
-using FluentAssertions.Extensions;
-using FluentValidation.TestHelper;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 
 namespace DrimCity.WebApi.Tests.Features.Posts.Requests;
 
@@ -86,7 +82,17 @@ public record CreateCommentRequestContract(string Content);
 
 public class AddCommentValidatorTests
 {
-    private readonly AddComment.RequestValidator _validator = new();
+    private readonly AddComment.BodyValidator _validator = new();
+
+    [Fact]
+    private void Should_not_have_errors_when_request_is_valid()
+    {
+        var body = new AddComment.Body("Valid content");
+
+        var result = _validator.TestValidate(body);
+
+        result.ShouldNotHaveAnyValidationErrors();
+    }
 
     [Theory]
     [InlineData(null)]
@@ -94,9 +100,9 @@ public class AddCommentValidatorTests
     [InlineData(" ")]
     public void Should_have_error_when_content_empty(string content)
     {
-        var request = new AddComment.Request(content);
+        var body = new AddComment.Body(content);
 
-        var result = _validator.TestValidate(request);
+        var result = _validator.TestValidate(body);
 
         result
             .ShouldHaveValidationErrorFor(x => x.Content)
@@ -106,9 +112,9 @@ public class AddCommentValidatorTests
     [Fact]
     public void Should_have_error_when_content_exceeds_max_length()
     {
-        var request = new AddComment.Request(new string('a', 10_001));
+        var body = new AddComment.Body(new string('a', 10_001));
 
-        var result = _validator.TestValidate(request);
+        var result = _validator.TestValidate(body);
 
         result
             .ShouldHaveValidationErrorFor(x => x.Content)

@@ -17,25 +17,28 @@ public static class AddComment
     {
         public void MapEndpoint(WebApplication app)
         {
-            app.MapPost("/posts/{slug}/comments",
-                async Task<Results<Created<CommentModel>, BadRequest<ProblemDetails>>>
-                (IMediator mediator, Request request, CancellationToken cancellationToken, string slug) =>
-            {
-                request = request with { Slug = slug }; //todo I think it is not okay to modify request like this
-                var comment = await mediator.Send(request, cancellationToken);
-                return TypedResults.Created($"/posts/{slug}/comments/{comment.Id}", comment);
-            });
+            app.MapPost(
+                "/posts/{slug}/comments",
+                async Task<Results<Created<CommentModel>, BadRequest<ProblemDetails>>> (
+                    IMediator mediator,
+                    [FromRoute] string slug,
+                    [FromBody] Body body,
+                    CancellationToken cancellationToken) =>
+                {
+                    var request = new Request(body.Content, slug);
+                    var comment = await mediator.Send(request, cancellationToken);
+                    return TypedResults.Created($"/posts/{slug}/comments/{comment.Id}", comment);
+                });
         }
     }
 
-    public record Request(string Content) : IRequest<CommentModel>
-    {
-        public string Slug { get; init; } = null!;
-    }
+    public record Body(string Content);
 
-    public class RequestValidator : AbstractValidator<Request>
+    public record Request(string Content, string Slug) : IRequest<CommentModel>;
+
+    public class BodyValidator : AbstractValidator<Body>
     {
-        public RequestValidator()
+        public BodyValidator()
         {
             RuleFor(x => x.Content)
                 .NotEmpty().WithErrorCode(CommentContentRequired)
