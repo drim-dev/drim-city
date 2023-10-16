@@ -24,6 +24,16 @@ public class AddCommentTests : IAsyncLifetime
         _httpClient = fixture.HttpClient;
     }
 
+    public async Task InitializeAsync()
+    {
+        await _database.Clear(CreateCancellationToken());
+    }
+
+    public Task DisposeAsync()
+    {
+        return Task.CompletedTask;
+    }
+
     [Fact]
     private async Task Should_create_comment()
     {
@@ -42,8 +52,9 @@ public class AddCommentTests : IAsyncLifetime
         responseComment.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, 1.Seconds());
         responseComment.AuthorId.Should().Be(1);
 
-        var dbComment = await _database.Execute(async dbContext => await dbContext.Comments
-            .SingleOrDefaultAsync(c => c.Id == responseComment.Id, CreateCancellationToken()));
+        var dbComment = await _database.Execute(
+            async dbContext => await dbContext.Comments
+                .SingleOrDefaultAsync(c => c.Id == responseComment.Id, CreateCancellationToken()));
 
         dbComment.Should().NotBeNull();
         dbComment.Should().BeEquivalentTo(responseComment);
@@ -74,21 +85,15 @@ public class AddCommentTests : IAsyncLifetime
 
     private async Task<Post> CreatePost()
     {
-        return await _database.Execute(async dbContext =>
-        {
-            var post = new Post(0, "anyTitle", "anyContent", DateTime.UtcNow, 0, "postSlug");
-            await dbContext.Posts.AddAsync(post, CreateCancellationToken());
-            await dbContext.SaveChangesAsync();
-            return post;
-        });
+        return await _database.Execute(
+            async dbContext =>
+            {
+                var post = new Post(0, "anyTitle", "anyContent", DateTime.UtcNow, 0, "postSlug");
+                await dbContext.Posts.AddAsync(post, CreateCancellationToken());
+                await dbContext.SaveChangesAsync();
+                return post;
+            });
     }
-
-    public async Task InitializeAsync()
-    {
-        await _database.Clear(CreateCancellationToken());
-    }
-
-    public Task DisposeAsync() => Task.CompletedTask;
 }
 
 public record CreateCommentRequestContract(string Content);

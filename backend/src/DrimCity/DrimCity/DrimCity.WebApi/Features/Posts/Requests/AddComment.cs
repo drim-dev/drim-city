@@ -63,7 +63,7 @@ public static class AddComment
         {
             var postId = await _dbContext.Posts
                 .Where(x => x.Slug == request.Slug)
-                .Select(x => (int?) x.Id)
+                .Select(x => (int?)x.Id)
                 .SingleOrDefaultAsync(cancellationToken);
 
             if (postId is null)
