@@ -30,7 +30,7 @@ public class AddCommentTests : IAsyncLifetime
         var post = await CreatePost();
         var request = AutoFaker.Generate<CreateCommentRequestContract>();
 
-        var (responseComment, httpResponse) = await Act(post, request);
+        var (responseComment, httpResponse) = await Act(post.Slug, request);
 
         httpResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         responseComment.Should().NotBeNull();
@@ -50,12 +50,25 @@ public class AddCommentTests : IAsyncLifetime
         dbComment!.PostId.Should().Be(post.Id);
     }
 
-    private async Task<(CommentContract? responseComment, HttpResponseMessage httpResponse)> Act(Post post,
+    [Fact]
+    private async Task Should_return_not_found_when_post_does_not_exist()
+    {
+        const string postSlug = "nonExistingPostSlug";
+        var request = AutoFaker.Generate<CreateCommentRequestContract>();
+
+        var (responseComment, httpResponse) = await Act(postSlug, request);
+
+        httpResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        responseComment.Should().BeNull();
+    }
+
+    private async Task<(CommentContract? responseComment, HttpResponseMessage httpResponse)> Act(
+        string postSlug,
         CreateCommentRequestContract request)
     {
         var httpClient = _httpClient.CreateClient();
         var (responseComment, httpResponse) = await httpClient
-            .PostTyped<CommentContract>($"/posts/{post.Slug}/comments", request, CreateCancellationToken());
+            .PostTyped<CommentContract>($"/posts/{postSlug}/comments", request, CreateCancellationToken());
         return (responseComment, httpResponse);
     }
 

@@ -19,7 +19,7 @@ public static class AddComment
         {
             app.MapPost(
                 "/posts/{slug}/comments",
-                async Task<Results<Created<CommentModel>, BadRequest<ProblemDetails>>> (
+                async Task<Results<Created<CommentModel>, NotFound>> (
                     IMediator mediator,
                     [FromRoute] string slug,
                     [FromBody] Body body,
@@ -27,6 +27,10 @@ public static class AddComment
                 {
                     var request = new Request(body.Content, slug);
                     var comment = await mediator.Send(request, cancellationToken);
+
+                    if (comment is null)
+                        return TypedResults.NotFound();
+
                     return TypedResults.Created($"/posts/{slug}/comments/{comment.Id}", comment);
                 });
         }
@@ -34,7 +38,7 @@ public static class AddComment
 
     public record Body(string Content);
 
-    public record Request(string Content, string Slug) : IRequest<CommentModel>;
+    public record Request(string Content, string Slug) : IRequest<CommentModel?>;
 
     public class BodyValidator : AbstractValidator<Body>
     {
@@ -46,7 +50,7 @@ public static class AddComment
         }
     }
 
-    public class RequestHandler : IRequestHandler<Request, CommentModel>
+    public class RequestHandler : IRequestHandler<Request, CommentModel?>
     {
         private readonly AppDbContext _dbContext;
 
@@ -55,14 +59,17 @@ public static class AddComment
             _dbContext = dbContext;
         }
 
-        public async Task<CommentModel> Handle(Request request, CancellationToken cancellationToken)
+        public async Task<CommentModel?> Handle(Request request, CancellationToken cancellationToken)
         {
             var postId = await _dbContext.Posts
                 .Where(x => x.Slug == request.Slug)
-                .Select(x => x.Id)
-                .SingleAsync(cancellationToken);
+                .Select(x => (int?) x.Id)
+                .SingleOrDefaultAsync(cancellationToken);
 
-            var comment = new Comment(request.Content, DateTime.UtcNow, 1, postId);
+            if (postId is null)
+                return null;
+
+            var comment = new Comment(request.Content, DateTime.UtcNow, 1, postId.Value);
 
             await _dbContext.Comments.AddAsync(comment, cancellationToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
