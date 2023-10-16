@@ -23,12 +23,10 @@ public static class CommentMap
         entity.Property(x => x.AuthorId)
             .IsRequired();
 
-        entity.Property(x => x.PostId)
-            .IsRequired();
-
         entity
-            .HasOne<Post>()
+            .HasOne<Post>(comment => comment.Post)
             .WithMany()
-            .HasForeignKey(comment => comment.PostId);
+            .HasForeignKey(comment => comment.PostId)
+            .IsRequired();
     }
 }
