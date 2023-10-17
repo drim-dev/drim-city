@@ -3,7 +3,7 @@ using Common.Web.Endpoints;
 using Common.Web.Errors;
 using Common.Web.Validation.Behaviors;
 using DrimCity.WebApi.Database;
-using DrimCity.WebApi.Features.Accounts.Extensions;
+using DrimCity.WebApi.Features.Auth.Extensions;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,11 +20,14 @@ builder.Services.AddMediatR(cfg => cfg
 
 builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
-builder.AddAccounts();
+builder.AddAuth();
 
 var app = builder.Build();
 
 app.MapProblemDetails();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapEndpoints();
 

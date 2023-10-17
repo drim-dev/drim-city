@@ -1,11 +1,12 @@
-﻿using Common.Tests.Database.Harnesses;
+﻿using System.Net.Http.Headers;
+using Common.Tests.Database.Harnesses;
 using Common.Tests.Harnesses;
 using Common.Tests.Http.Harnesses;
 using DrimCity.WebApi.Database;
-using FluentAssertions;
-using FluentAssertions.Extensions;
+using DrimCity.WebApi.Domain;
+using DrimCity.WebApi.Features.Auth.Services;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Xunit;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DrimCity.WebApi.Tests.Fixtures;
 
@@ -30,6 +31,36 @@ public class TestFixture : IAsyncLifetime
     public async Task Reset(CancellationToken cancellationToken)
     {
         await Database.Clear(cancellationToken);
+    }
+
+    public async Task<(HttpClient, Account)> CreatedAuthedHttpClient()
+    {
+        var account = CreateAccount();
+        await Database.Save(account);
+
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var jwtGenerator = scope.ServiceProvider.GetRequiredService<JwtGenerator>();
+        var jwt = jwtGenerator.Generate(account);
+
+        var client = HttpClient.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
+
+        return (client, account);
+    }
+
+    public async Task<(HttpClient, Account)> CreateWronglyAuthedHttpClient()
+    {
+        var account = CreateAccount();
+        await Database.Save(account);
+
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var jwtGenerator = scope.ServiceProvider.GetRequiredService<JwtGenerator>();
+        var incorrectJwt = jwtGenerator.Generate(account) + "123";
+
+        var client = HttpClient.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", incorrectJwt);
+
+        return (client, account);
     }
 
     public async Task InitializeAsync()

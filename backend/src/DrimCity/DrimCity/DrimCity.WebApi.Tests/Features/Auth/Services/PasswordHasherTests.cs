@@ -1,9 +1,9 @@
-using DrimCity.WebApi.Features.Accounts.Options;
-using DrimCity.WebApi.Features.Accounts.Services;
+using DrimCity.WebApi.Features.Auth.Options;
+using DrimCity.WebApi.Features.Auth.Services;
 using Isopoh.Cryptography.Argon2;
 using Microsoft.Extensions.Options;
 
-namespace DrimCity.WebApi.Tests.Features.Accounts.Services;
+namespace DrimCity.WebApi.Tests.Features.Auth.Services;
 
 public class PasswordHasherTests
 {
@@ -12,20 +12,21 @@ public class PasswordHasherTests
 
     public PasswordHasherTests()
     {
-        _options = new PasswordHashOptions();
+        _options = new PasswordHashOptions
+        {
+            PasswordHashLength = 64,
+            SaltLength = 32,
+            TimeCost = 8,
+            MemoryCost = 131_072,
+            Parallelization = 4,
+        };
         _hasher = new PasswordHasher(new OptionsWrapper<PasswordHashOptions>(_options));
     }
 
     [Fact]
     public void Should_hash_password()
     {
-        _options.PasswordHashLength = 64;
-        _options.SaltLength = 32;
-        _options.TimeCost = 8;
-        _options.MemoryCost = 131_072;
-        _options.Parallelization = 4;
-
-        var hash = _hasher.HashPassword("password");
+        var hash = _hasher.Hash("password");
 
         hash.Should().NotBeNullOrEmpty();
         var parts = hash.Split('$');
@@ -44,8 +45,8 @@ public class PasswordHasherTests
     [Fact]
     public void Should_produce_different_hashes_for_different_passwords()
     {
-        var hash1 = _hasher.HashPassword("password1");
-        var hash2 = _hasher.HashPassword("password2");
+        var hash1 = _hasher.Hash("password1");
+        var hash2 = _hasher.Hash("password2");
 
         hash1.Should().NotBe(hash2);
     }
@@ -53,8 +54,8 @@ public class PasswordHasherTests
     [Fact]
     public void Should_produce_different_hashes_for_same_passwords()
     {
-        var hash1 = _hasher.HashPassword("password");
-        var hash2 = _hasher.HashPassword("password");
+        var hash1 = _hasher.Hash("password");
+        var hash2 = _hasher.Hash("password");
 
         hash1.Should().NotBe(hash2);
     }
@@ -64,7 +65,7 @@ public class PasswordHasherTests
     {
         const string hash = "$argon2id$v=19$m=65536,t=4,p=4$brMiyJUHhoCtPSVF1uo1kw$8zm3YLc1wyyDvl5qTZzRYFaIHSbixtrCWJnqbjYCFMo";
 
-        _hasher.VerifyPassword("password", hash).Should().BeTrue();
-        _hasher.VerifyPassword("wrong_password", hash).Should().BeFalse();
+        _hasher.Verify("password", hash).Should().BeTrue();
+        _hasher.Verify("wrong_password", hash).Should().BeFalse();
     }
 }

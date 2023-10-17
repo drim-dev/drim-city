@@ -1,8 +1,8 @@
-namespace DrimCity.WebApi.Features.Accounts.Errors;
+namespace DrimCity.WebApi.Features.Auth.Errors;
 
-public static class AccountsValidationErrors
+public static class AuthValidationErrors
 {
-    private const string Prefix = "accounts:validation:";
+    private const string Prefix = "auth:validation:";
 
     public const string LoginRequired = Prefix + "login_required";
     public const string LoginMustBeGreaterOrEqualMinLength = Prefix + "login_must_be_greater_or_equal_min_length";

@@ -1,3 +1,3 @@
-namespace DrimCity.WebApi.Tests.Features.Accounts.Contracts;
+namespace DrimCity.WebApi.Tests.Features.Auth.Contracts;
 
 public record AccountContract(string Login, DateTime CreatedAt);

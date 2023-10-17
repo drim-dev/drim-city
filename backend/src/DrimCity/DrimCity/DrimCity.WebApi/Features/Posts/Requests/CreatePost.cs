@@ -1,4 +1,6 @@
-﻿using Common.Web.Endpoints;
+﻿using System.Security.Claims;
+using Common.Web.Auth;
+using Common.Web.Endpoints;
 using DrimCity.WebApi.Database;
 using DrimCity.WebApi.Domain;
 using DrimCity.WebApi.Features.Posts.Models;
@@ -20,15 +22,20 @@ public static class CreatePost
         public void MapEndpoint(WebApplication app)
         {
             app.MapPost(Path, async Task<Results<Created<PostModel>, BadRequest<ProblemDetails>>>
-                (IMediator mediator, Request request, CancellationToken cancellationToken) =>
+                (IMediator mediator, RequestBody body, ClaimsPrincipal user, CancellationToken cancellationToken) =>
             {
+                var userId = user.GetUserId();
+                var request = new Request(userId, body.Title, body.Content);
                 var post = await mediator.Send(request, cancellationToken);
                 return TypedResults.Created($"{Path}/{post.Slug}", post);
-            });
+            })
+                .RequireAuthorization();
         }
+
+        private record RequestBody(string Title, string Content);
     }
 
-    public record Request(string Title, string Content) : IRequest<PostModel>;
+    public record Request(int UserId, string Title, string Content) : IRequest<PostModel>;
 
     public class RequestValidator : AbstractValidator<Request>
     {
@@ -62,7 +69,7 @@ public static class CreatePost
         {
             var slug = SlugGenerator.CreateSlug(request.Title);
 
-            var post = new Post(0, request.Title, request.Content, DateTime.UtcNow, 1, slug);
+            var post = new Post(0, request.Title, request.Content, DateTime.UtcNow, request.UserId, slug);
 
             await _db.Posts.AddAsync(post, cancellationToken);
             await _db.SaveChangesAsync(cancellationToken);

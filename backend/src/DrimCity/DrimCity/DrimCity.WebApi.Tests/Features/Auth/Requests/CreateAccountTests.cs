@@ -1,13 +1,13 @@
 using System.Net;
 using Common.Tests.Http.Extensions;
 using DrimCity.WebApi.Domain;
-using DrimCity.WebApi.Features.Accounts.Requests;
-using DrimCity.WebApi.Tests.Features.Accounts.Contracts;
+using DrimCity.WebApi.Features.Auth.Requests;
+using DrimCity.WebApi.Tests.Features.Auth.Contracts;
 using DrimCity.WebApi.Tests.Fixtures;
 
-namespace DrimCity.WebApi.Tests.Features.Accounts.Requests;
+namespace DrimCity.WebApi.Tests.Features.Auth.Requests;
 
-[Collection(PostsTestsCollection.Name)]
+[Collection(AuthTestsCollection.Name)]
 public class CreateAccountTests : IAsyncLifetime
 {
     private readonly TestFixture _fixture;
@@ -17,13 +17,13 @@ public class CreateAccountTests : IAsyncLifetime
     private async Task<(AccountContract?, HttpResponseMessage)> Act(CreateAccountRequestContract request)
     {
         var client = _fixture.HttpClient.CreateClient();
-        return await client.PostTyped<AccountContract>("/accounts", request, CreateCancellationToken());
+        return await client.PostTyped<AccountContract>("/auth/accounts", request, CreateCancellationToken());
     }
 
     [Fact]
     public async Task Should_create_account()
     {
-        const string login = "sam";
+        const string login = "Sam";
 
         var request = new CreateAccountRequestContract(login, "Qwer1234!");
 
@@ -32,9 +32,9 @@ public class CreateAccountTests : IAsyncLifetime
         httpResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         responseAccount.Should().NotBeNull();
 
-        httpResponse.Headers.Location.Should().Be($"/accounts/{responseAccount!.Login}");
+        httpResponse.Headers.Location.Should().Be($"/auth/accounts/{responseAccount!.Login}");
 
-        responseAccount.Login.Should().Be(login);
+        responseAccount.Login.Should().Be(login.ToLower());
         responseAccount.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, 1.Seconds());
 
         var dbAccount = await _fixture.Database.SingleOrDefault<Account>(x => x.Login == responseAccount.Login,
@@ -42,26 +42,26 @@ public class CreateAccountTests : IAsyncLifetime
 
         dbAccount.Should().NotBeNull();
         dbAccount!.Id.Should().BeGreaterOrEqualTo(0);
-        dbAccount.Login.Should().Be(login);
+        dbAccount.Login.Should().Be(login.ToLower());
         dbAccount.CreatedAt.Should().BeCloseTo(responseAccount.CreatedAt, 100.Microseconds());
         dbAccount.PasswordHash.Should().NotBeEmpty();
 
-        // Password hash generation will be tested in PasswordHasherTests
+        // Password hash generation is tested in PasswordHasherTests
         dbAccount.PasswordHash.Split('$').Should().HaveCount(6);
     }
 
-    [Fact]
-    public async Task Should_return_logic_conflict_error_if_account_already_exists()
+    [Theory]
+    [InlineData("sam")]
+    [InlineData("Sam")]
+    public async Task Should_return_logic_conflict_error_if_account_already_exists_case_insensitive(string login)
     {
-        const string login = "sam";
-
         await _fixture.Database.Save(CreateAccount(login));
 
         var request = new CreateAccountRequestContract(login, "Qwer1234!");
 
         var (_, httpResponse) = await Act(request);
 
-        await httpResponse.ShouldBeLogicConflictError("Account already exists", "accounts:logic:account_already_exists");
+        await httpResponse.ShouldBeLogicConflictError("Account already exists", "auth:logic:account_already_exists");
     }
 
     public async Task InitializeAsync()
@@ -99,7 +99,7 @@ public class CreateAccountValidatorTests
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Login)
-            .WithErrorCode("accounts:validation:login_required");
+            .WithErrorCode("auth:validation:login_required");
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public class CreateAccountValidatorTests
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Login)
-            .WithErrorCode("accounts:validation:login_must_be_greater_or_equal_min_length");
+            .WithErrorCode("auth:validation:login_must_be_greater_or_equal_min_length");
     }
 
     [Fact]
@@ -121,7 +121,7 @@ public class CreateAccountValidatorTests
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Login)
-            .WithErrorCode("accounts:validation:login_must_be_less_or_equal_max_length");
+            .WithErrorCode("auth:validation:login_must_be_less_or_equal_max_length");
     }
 
     [Theory]
@@ -136,7 +136,7 @@ public class CreateAccountValidatorTests
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Login)
-            .WithErrorCode("accounts:validation:login_must_contain_specific_symbols");
+            .WithErrorCode("auth:validation:login_must_contain_specific_symbols");
     }
 
     [Theory]
@@ -150,7 +150,7 @@ public class CreateAccountValidatorTests
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Password)
-            .WithErrorCode("accounts:validation:password_required");
+            .WithErrorCode("auth:validation:password_required");
     }
 
     [Fact]
@@ -161,7 +161,7 @@ public class CreateAccountValidatorTests
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Password)
-            .WithErrorCode("accounts:validation:password_must_be_greater_or_equal_min_length");
+            .WithErrorCode("auth:validation:password_must_be_greater_or_equal_min_length");
     }
 
     [Fact]
@@ -172,7 +172,7 @@ public class CreateAccountValidatorTests
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Password)
-            .WithErrorCode("accounts:validation:password_must_be_less_or_equal_max_length");
+            .WithErrorCode("auth:validation:password_must_be_less_or_equal_max_length");
     }
 
     [Fact]
@@ -183,7 +183,7 @@ public class CreateAccountValidatorTests
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Password)
-            .WithErrorCode("accounts:validation:password_must_contain_uppercase_letter");
+            .WithErrorCode("auth:validation:password_must_contain_uppercase_letter");
     }
 
     [Fact]
@@ -194,7 +194,7 @@ public class CreateAccountValidatorTests
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Password)
-            .WithErrorCode("accounts:validation:password_must_contain_lowercase_letter");
+            .WithErrorCode("auth:validation:password_must_contain_lowercase_letter");
     }
 
     [Fact]
@@ -205,7 +205,7 @@ public class CreateAccountValidatorTests
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Password)
-            .WithErrorCode("accounts:validation:password_must_contain_number");
+            .WithErrorCode("auth:validation:password_must_contain_number");
     }
 
     [Fact]
@@ -216,6 +216,6 @@ public class CreateAccountValidatorTests
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Password)
-            .WithErrorCode("accounts:validation:password_must_contain_special_symbol");
+            .WithErrorCode("auth:validation:password_must_contain_special_symbol");
     }
 }

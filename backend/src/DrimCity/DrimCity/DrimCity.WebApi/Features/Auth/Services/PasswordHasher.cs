@@ -1,10 +1,10 @@
 using System.Security.Cryptography;
 using System.Text;
-using DrimCity.WebApi.Features.Accounts.Options;
+using DrimCity.WebApi.Features.Auth.Options;
 using Isopoh.Cryptography.Argon2;
 using Microsoft.Extensions.Options;
 
-namespace DrimCity.WebApi.Features.Accounts.Services;
+namespace DrimCity.WebApi.Features.Auth.Services;
 
 public class PasswordHasher
 {
@@ -17,7 +17,7 @@ public class PasswordHasher
         _options = options.Value;
     }
 
-    public string HashPassword(string password)
+    public string Hash(string password)
     {
         var salt = new byte[_options.SaltLength];
         Rng.GetBytes(salt);
@@ -37,5 +37,5 @@ public class PasswordHasher
         return Argon2.Hash(config);
     }
 
-    public bool VerifyPassword(string password, string passwordHash) => Argon2.Verify(passwordHash, password);
+    public bool Verify(string password, string passwordHash) => Argon2.Verify(passwordHash, password);
 }

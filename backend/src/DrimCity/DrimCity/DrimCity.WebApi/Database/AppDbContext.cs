@@ -62,7 +62,9 @@ public class AppDbContext : DbContext
             post.Property(x => x.CreatedAt)
                 .IsRequired();
 
-            post.Property(x => x.AuthorId)
+            post.HasOne(x => x.Author)
+                .WithMany()
+                .HasForeignKey(x => x.AuthorId)
                 .IsRequired();
 
             post.Property(x => x.Slug)
