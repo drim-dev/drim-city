@@ -100,14 +100,15 @@ public record CreateCommentRequestContract(string Content);
 
 public class AddCommentValidatorTests
 {
-    private readonly AddComment.BodyValidator _validator = new();
+    private const string AnyValidSlug = "any-valid-slug";
+    private readonly AddComment.RequestValidator _validator = new();
 
     [Fact]
     private void Should_not_have_errors_when_request_is_valid()
     {
-        var body = new AddComment.Body("Valid content");
+        var request = new AddComment.Request("Valid content", AnyValidSlug);
 
-        var result = _validator.TestValidate(body);
+        var result = _validator.TestValidate(request);
 
         result.ShouldNotHaveAnyValidationErrors();
     }
@@ -118,9 +119,9 @@ public class AddCommentValidatorTests
     [InlineData(" ")]
     public void Should_have_error_when_content_empty(string content)
     {
-        var body = new AddComment.Body(content);
+        var request = new AddComment.Request(content, AnyValidSlug);
 
-        var result = _validator.TestValidate(body);
+        var result = _validator.TestValidate(request);
 
         result
             .ShouldHaveValidationErrorFor(x => x.Content)
@@ -130,9 +131,9 @@ public class AddCommentValidatorTests
     [Fact]
     public void Should_have_error_when_content_exceeds_max_length()
     {
-        var body = new AddComment.Body(new string('a', 10_001));
+        var request = new AddComment.Request(new string('a', 10_001), AnyValidSlug);
 
-        var result = _validator.TestValidate(body);
+        var result = _validator.TestValidate(request);
 
         result
             .ShouldHaveValidationErrorFor(x => x.Content)

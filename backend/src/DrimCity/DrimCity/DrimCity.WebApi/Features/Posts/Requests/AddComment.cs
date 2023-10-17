@@ -18,8 +18,8 @@ public static class AddComment
         public void MapEndpoint(WebApplication app)
         {
             app.MapPost("/posts/{slug}/comments",
-                async Task<Results<Created<CommentModel>, NotFound>> (IMediator mediator, [FromRoute] string slug,
-                    [FromBody] Body body, CancellationToken cancellationToken) =>
+                async Task<Results<Created<CommentModel>, NotFound, BadRequest<ProblemDetails>>> (IMediator mediator,
+                    string slug, Body body, CancellationToken cancellationToken) =>
                 {
                     var request = new Request(body.Content, slug);
                     var comment = await mediator.Send(request, cancellationToken);
@@ -38,9 +38,9 @@ public static class AddComment
 
     public record Request(string Content, string Slug) : IRequest<CommentModel?>;
 
-    public class BodyValidator : AbstractValidator<Body>
+    public class RequestValidator : AbstractValidator<Request>
     {
-        public BodyValidator()
+        public RequestValidator()
         {
             RuleFor(x => x.Content)
                 .NotEmpty().WithErrorCode(CommentContentRequired)
