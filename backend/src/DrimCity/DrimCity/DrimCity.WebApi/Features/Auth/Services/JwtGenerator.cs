@@ -31,7 +31,7 @@ public class JwtGenerator
             Issuer = _options.Issuer,
             Audience = _options.Audience,
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(
-                Encoding.ASCII.GetBytes(_options.Key)), SecurityAlgorithms.HmacSha256Signature)
+                Encoding.UTF8.GetBytes(_options.Key)), SecurityAlgorithms.HmacSha256Signature)
         };
 
         var tokenHandler = new JwtSecurityTokenHandler();
