@@ -17,19 +17,17 @@ public static class AddComment
     {
         public void MapEndpoint(WebApplication app)
         {
-            app.MapPost(
-                "/posts/{slug}/comments",
-                async Task<Results<Created<CommentModel>, NotFound>> (
-                    IMediator mediator,
-                    [FromRoute] string slug,
-                    [FromBody] Body body,
-                    CancellationToken cancellationToken) =>
+            app.MapPost("/posts/{slug}/comments",
+                async Task<Results<Created<CommentModel>, NotFound>> (IMediator mediator, [FromRoute] string slug,
+                    [FromBody] Body body, CancellationToken cancellationToken) =>
                 {
                     var request = new Request(body.Content, slug);
                     var comment = await mediator.Send(request, cancellationToken);
 
                     if (comment is null)
+                    {
                         return TypedResults.NotFound();
+                    }
 
                     return TypedResults.Created($"/posts/{slug}/comments/{comment.Id}", comment);
                 });
@@ -67,7 +65,9 @@ public static class AddComment
                 .SingleOrDefaultAsync(cancellationToken);
 
             if (postId is null)
+            {
                 return null;
+            }
 
             var comment = new Comment(request.Content, DateTime.UtcNow, 1, postId.Value);
 
