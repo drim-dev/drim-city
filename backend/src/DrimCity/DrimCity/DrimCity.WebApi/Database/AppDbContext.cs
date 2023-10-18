@@ -10,9 +10,9 @@ public class AppDbContext : DbContext
     {
     }
 
-    public DbSet<Post> Posts { get; set; }
-    public DbSet<Account> Accounts { get; set; }
-    public DbSet<Comment> Comments { get; set; }
+    public DbSet<Post> Posts => Set<Post>();
+    public DbSet<Account> Accounts => Set<Account>();
+    public DbSet<Comment> Comments => Set<Comment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
