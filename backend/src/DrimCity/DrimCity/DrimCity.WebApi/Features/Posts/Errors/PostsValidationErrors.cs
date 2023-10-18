@@ -8,4 +8,7 @@ public static class PostsValidationErrors
     public const string TitleMustBeLessOrEqualMaxLength = Prefix + "title_must_be_less_or_equal_max_length";
     public const string ContentRequired = Prefix + "content_required";
     public const string ContentMustBeLessOrEqualMaxLength = Prefix + "content_must_be_less_or_equal_max_length";
+
+    public const string CommentContentRequired = Prefix + "comment_content_required";
+    public const string CommentContentExceedsMaxLength = Prefix + "comment_content_exceeds_max_length";
 }

@@ -1,0 +1,16 @@
+
+[*.cs]
+
+# ReSharper properties
+resharper_braces_for_ifelse = required
+resharper_csharp_wrap_after_declaration_lpar = false
+resharper_csharp_wrap_after_invocation_lpar = false
+resharper_csharp_wrap_arguments_style = wrap_if_long
+resharper_csharp_wrap_parameters_style = wrap_if_long
+resharper_keep_existing_embedded_arrangement = false
+resharper_place_simple_embedded_statement_on_same_line = false
+resharper_trailing_comma_in_multiline_lists = true
+resharper_wrap_after_declaration_lpar = false
+resharper_wrap_after_invocation_lpar = false
+resharper_wrap_arguments_style = wrap_if_long
+resharper_wrap_parameters_style = wrap_if_long
