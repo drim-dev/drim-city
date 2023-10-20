@@ -29,13 +29,11 @@ public class AddCommentTests : IAsyncLifetime
         await _database.Clear(CreateCancellationToken());
     }
 
-    public Task DisposeAsync()
-    {
-        return Task.CompletedTask;
-    }
+    public Task DisposeAsync() =>
+        Task.CompletedTask;
 
     [Fact]
-    private async Task Should_create_comment()
+    public async Task Should_create_comment()
     {
         var post = await CreatePost();
         var request = AutoFaker.Generate<CreateCommentRequestContract>();
@@ -62,7 +60,7 @@ public class AddCommentTests : IAsyncLifetime
     }
 
     [Fact]
-    private async Task Should_return_not_found_when_post_does_not_exist()
+    public async Task Should_return_not_found_when_post_does_not_exist()
     {
         const string postSlug = "nonExistingPostSlug";
         var request = AutoFaker.Generate<CreateCommentRequestContract>();
@@ -104,7 +102,7 @@ public class AddCommentValidatorTests
     private readonly AddComment.RequestValidator _validator = new();
 
     [Fact]
-    private void Should_not_have_errors_when_request_is_valid()
+    public void Should_not_have_errors_when_request_is_valid()
     {
         var request = new AddComment.Request("Valid content", AnyValidSlug);
 

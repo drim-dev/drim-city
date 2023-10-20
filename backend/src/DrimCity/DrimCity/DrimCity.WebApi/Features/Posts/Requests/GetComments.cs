@@ -51,6 +51,7 @@ public static class GetComments
 
             var comments = await _dbContext.Comments
                 .Where(x => x.PostId == post.Id)
+                .OrderBy(x => x.CreatedAt)
                 .Select(x => new CommentModel(x.Id, x.Content, x.CreatedAt, x.AuthorId))
                 .ToArrayAsync(cancellationToken);
 
