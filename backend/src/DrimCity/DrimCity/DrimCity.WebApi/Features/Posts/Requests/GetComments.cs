@@ -3,7 +3,6 @@ using DrimCity.WebApi.Database;
 using DrimCity.WebApi.Features.Posts.Models;
 using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace DrimCity.WebApi.Features.Posts.Requests;
@@ -15,8 +14,8 @@ public static class GetComments
         public void MapEndpoint(WebApplication app)
         {
             app.MapGet("/posts/{slug}/comments",
-                async Task<Results<Ok<CommentModel[]>, NotFound, BadRequest<ProblemDetails>>> (IMediator mediator,
-                    string slug, CancellationToken cancellationToken) =>
+                async Task<Results<Ok<CommentModel[]>, NotFound>>
+                    (IMediator mediator, string slug, CancellationToken cancellationToken) =>
                 {
                     var comments = await mediator.Send(new Request(slug), cancellationToken);
 

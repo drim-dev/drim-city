@@ -5,7 +5,6 @@ using DrimCity.WebApi.Features.Posts.Models;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using static DrimCity.WebApi.Features.Posts.Errors.PostsValidationErrors;
 
@@ -18,8 +17,8 @@ public static class AddComment
         public void MapEndpoint(WebApplication app)
         {
             app.MapPost("/posts/{slug}/comments",
-                async Task<Results<Created<CommentModel>, NotFound, BadRequest<ProblemDetails>>> (IMediator mediator,
-                    string slug, Body body, CancellationToken cancellationToken) =>
+                async Task<Results<Created<CommentModel>, NotFound>>
+                    (IMediator mediator, string slug, Body body, CancellationToken cancellationToken) =>
                 {
                     var request = new Request(body.Content, slug);
                     var comment = await mediator.Send(request, cancellationToken);
