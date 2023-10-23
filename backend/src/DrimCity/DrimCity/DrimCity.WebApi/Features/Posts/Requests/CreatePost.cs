@@ -6,7 +6,6 @@ using DrimCity.WebApi.Features.Posts.Services;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 using static DrimCity.WebApi.Features.Posts.Errors.PostsValidationErrors;
 
 namespace DrimCity.WebApi.Features.Posts.Requests;
@@ -19,7 +18,7 @@ public static class CreatePost
 
         public void MapEndpoint(WebApplication app)
         {
-            app.MapPost(Path, async Task<Results<Created<PostModel>, BadRequest<ProblemDetails>>>
+            app.MapPost(Path, async Task<Created<PostModel>>
                 (IMediator mediator, Request request, CancellationToken cancellationToken) =>
             {
                 var post = await mediator.Send(request, cancellationToken);
