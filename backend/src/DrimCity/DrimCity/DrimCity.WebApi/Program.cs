@@ -22,7 +22,13 @@ builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
 builder.AddAccounts();
 
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options => { options.CustomSchemaIds(type => type.ToString().Replace("+", "_")); });
+
 var app = builder.Build();
+
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.MapProblemDetails();
 
@@ -34,5 +40,5 @@ app.Run();
 
 namespace DrimCity.WebApi
 {
-    public partial class Program {}
+    public class Program { }
 }

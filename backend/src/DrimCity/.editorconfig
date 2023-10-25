@@ -5,6 +5,7 @@ charset = utf-8
 
 # ReSharper properties
 resharper_braces_for_ifelse = required
+resharper_csharp_empty_block_style = together_same_line
 resharper_csharp_wrap_after_declaration_lpar = false
 resharper_csharp_wrap_after_invocation_lpar = false
 resharper_csharp_wrap_arguments_style = wrap_if_long
