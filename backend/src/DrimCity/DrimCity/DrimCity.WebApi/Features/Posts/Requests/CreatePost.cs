@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using Common.Web.Auth;
 using Common.Web.Endpoints;
+using Common.Web.Validation.Extensions;
 using DrimCity.WebApi.Database;
 using DrimCity.WebApi.Domain;
 using DrimCity.WebApi.Features.Posts.Models;
@@ -8,7 +9,6 @@ using DrimCity.WebApi.Features.Posts.Services;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 using static DrimCity.WebApi.Features.Posts.Errors.PostsValidationErrors;
 
 namespace DrimCity.WebApi.Features.Posts.Requests;
@@ -21,11 +21,10 @@ public static class CreatePost
 
         public void MapEndpoint(WebApplication app)
         {
-            app.MapPost(Path, async Task<Results<Created<PostModel>, BadRequest<ProblemDetails>>>
+            app.MapPost(Path, async Task<Created<PostModel>>
                 (IMediator mediator, RequestBody body, ClaimsPrincipal user, CancellationToken cancellationToken) =>
             {
-                var userId = user.GetUserId();
-                var request = new Request(userId, body.Title, body.Content);
+                var request = new Request(user.GetUserId(), body.Title, body.Content);
                 var post = await mediator.Send(request, cancellationToken);
                 return TypedResults.Created($"{Path}/{post.Slug}", post);
             })
@@ -35,24 +34,18 @@ public static class CreatePost
         private record RequestBody(string Title, string Content);
     }
 
-    public record Request(int UserId, string Title, string Content) : IRequest<PostModel>;
+    public record Request(int AuthorId, string Title, string Content) : IRequest<PostModel>;
 
     public class RequestValidator : AbstractValidator<Request>
     {
         public RequestValidator()
         {
             RuleFor(x => x.Title)
-                .NotEmpty()
-                    .WithErrorCode(TitleRequired)
-                .MaximumLength(Post.TitleMaxLength)
-                    .WithMessage($"Title length must be less or equal than {Post.TitleMaxLength}")
-                    .WithErrorCode(TitleMustBeLessOrEqualMaxLength);
+                .NotEmpty(TitleMustNotBeEmpty)
+                .MaximumLength(Post.TitleMaxLength, TitleMustBeLessOrEqualMaxLength);
             RuleFor(x => x.Content)
-                .NotEmpty()
-                    .WithErrorCode(ContentRequired)
-                .MaximumLength(Post.ContentMaxLength)
-                    .WithMessage($"Content length must be less or equal than {Post.ContentMaxLength}")
-                    .WithErrorCode(ContentMustBeLessOrEqualMaxLength);
+                .NotEmpty(ContentMustNotBeEmpty)
+                .MaximumLength(Post.ContentMaxLength, ContentMustBeLessOrEqualMaxLength);
         }
     }
 
@@ -69,7 +62,7 @@ public static class CreatePost
         {
             var slug = SlugGenerator.CreateSlug(request.Title);
 
-            var post = new Post(0, request.Title, request.Content, DateTime.UtcNow, request.UserId, slug);
+            var post = new Post(0, request.Title, request.Content, DateTime.UtcNow, request.AuthorId, slug);
 
             await _db.Posts.AddAsync(post, cancellationToken);
             await _db.SaveChangesAsync(cancellationToken);

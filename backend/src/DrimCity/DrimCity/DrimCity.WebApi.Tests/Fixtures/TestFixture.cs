@@ -12,6 +12,11 @@ namespace DrimCity.WebApi.Tests.Fixtures;
 
 public class TestFixture : IAsyncLifetime
 {
+    static TestFixture()
+    {
+        SetupFluentAssertions();
+    }
+
     private readonly WebApplicationFactory<Program> _factory;
 
     public TestFixture()
@@ -69,17 +74,24 @@ public class TestFixture : IAsyncLifetime
         await HttpClient.Start(_factory, CreateCancellationToken());
 
         _ = _factory.Server;
-
-        AssertionOptions.AssertEquivalencyUsing(options => options
-            .Using<DateTime>(ctx => ctx.Subject.Should().BeCloseTo(ctx.Expectation, 100.Milliseconds()))
-            .WhenTypeIs<DateTime>()
-            .Using<DateTimeOffset>(ctx => ctx.Subject.Should().BeCloseTo(ctx.Expectation, 100.Milliseconds()))
-            .WhenTypeIs<DateTimeOffset>());
     }
 
     public async Task DisposeAsync()
     {
         await HttpClient.Stop(CreateCancellationToken());
         await Database.Stop(CreateCancellationToken());
+    }
+
+    // Workaround to fix FluentAssertion concurrency issue
+    // https://github.com/fluentassertions/fluentassertions/issues/1932#issuecomment-1137366562
+    [System.Runtime.CompilerServices.ModuleInitializer]
+    internal static void SetupFluentAssertions()
+    {
+        AssertionOptions.AssertEquivalencyUsing(options => options
+            .Using<DateTimeOffset>(ctx => ctx.Subject.Should().BeSameDateAs(ctx.Expectation))
+            .WhenTypeIs<DateTimeOffset>()
+            .Using<DateTime>(ctx => ctx.Subject.Should().BeSameDateAs(ctx.Expectation))
+            .WhenTypeIs<DateTime>()
+        );
     }
 }

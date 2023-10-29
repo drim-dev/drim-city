@@ -15,6 +15,10 @@ public class CreatePostTests : IAsyncLifetime
 
     public CreatePostTests(TestFixture fixture) => _fixture = fixture;
 
+    public Task InitializeAsync() => _fixture.Reset(CreateCancellationToken());
+
+    public Task DisposeAsync() => Task.CompletedTask;
+
     private static async Task<(PostContract?, HttpResponseMessage)> Act(HttpClient client,
         CreatePostRequestContract request) =>
         await client.PostTyped<PostContract>("/posts", request, CreateCancellationToken());
@@ -63,13 +67,6 @@ public class CreatePostTests : IAsyncLifetime
 
         httpResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
-
-    public async Task InitializeAsync()
-    {
-        await _fixture.Reset(CreateCancellationToken());
-    }
-
-    public Task DisposeAsync() => Task.CompletedTask;
 }
 
 public record CreatePostRequestContract(string Title, string Content);
@@ -79,7 +76,7 @@ public class CreatePostValidatorTests
     private readonly CreatePost.RequestValidator _validator = new();
 
     [Fact]
-    public void Should_not_have_errors_when_request_valid()
+    public void Should_not_have_errors_when_request_is_valid()
     {
         var request = new CreatePost.Request(1, "title", "content");
 
@@ -99,7 +96,7 @@ public class CreatePostValidatorTests
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Title)
-            .WithErrorCode("posts:validation:title_required");
+            .WithErrorCode("posts:validation:title_must_not_be_empty");
     }
 
     [Fact]
@@ -124,7 +121,7 @@ public class CreatePostValidatorTests
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Content)
-            .WithErrorCode("posts:validation:content_required");
+            .WithErrorCode("posts:validation:content_must_not_be_empty");
     }
 
     [Fact]

@@ -9,7 +9,6 @@ using DrimCity.WebApi.Features.Auth.Validation;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using static DrimCity.WebApi.Features.Auth.Errors.AuthValidationErrors;
 
@@ -23,7 +22,7 @@ public static class CreateAccount
 
         public void MapEndpoint(WebApplication app)
         {
-            app.MapPost(Path, async Task<Results<Created<AccountModel>, BadRequest<ProblemDetails>>>
+            app.MapPost(Path, async Task<Created<AccountModel>>
                 (IMediator mediator, Request request, CancellationToken cancellationToken) =>
             {
                 var account = await mediator.Send(request, cancellationToken);

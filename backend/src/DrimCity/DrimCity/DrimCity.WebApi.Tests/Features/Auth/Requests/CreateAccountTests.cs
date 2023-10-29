@@ -14,6 +14,10 @@ public class CreateAccountTests : IAsyncLifetime
 
     public CreateAccountTests(TestFixture fixture) => _fixture = fixture;
 
+    public Task InitializeAsync() => _fixture.Reset(CreateCancellationToken());
+
+    public Task DisposeAsync() => Task.CompletedTask;
+
     private async Task<(AccountContract?, HttpResponseMessage)> Act(CreateAccountRequestContract request)
     {
         var client = _fixture.HttpClient.CreateClient();
@@ -63,13 +67,6 @@ public class CreateAccountTests : IAsyncLifetime
 
         await httpResponse.ShouldBeLogicConflictError("Account already exists", "auth:logic:account_already_exists");
     }
-
-    public async Task InitializeAsync()
-    {
-        await _fixture.Reset(CreateCancellationToken());
-    }
-
-    public Task DisposeAsync() => Task.CompletedTask;
 }
 
 public record CreateAccountRequestContract(string Login, string Password);
@@ -79,7 +76,7 @@ public class CreateAccountValidatorTests
     private readonly CreateAccount.RequestValidator _validator = new();
 
     [Fact]
-    public void Should_not_have_errors_when_request_valid()
+    public void Should_not_have_errors_when_request_is_valid()
     {
         var request = new CreateAccount.Request("sam", "Qwerty1234!");
 
@@ -99,7 +96,7 @@ public class CreateAccountValidatorTests
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Login)
-            .WithErrorCode("auth:validation:login_required");
+            .WithErrorCode("auth:validation:login_must_not_be_empty");
     }
 
     [Fact]
@@ -150,7 +147,7 @@ public class CreateAccountValidatorTests
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Password)
-            .WithErrorCode("auth:validation:password_required");
+            .WithErrorCode("auth:validation:password_must_not_be_empty");
     }
 
     [Fact]

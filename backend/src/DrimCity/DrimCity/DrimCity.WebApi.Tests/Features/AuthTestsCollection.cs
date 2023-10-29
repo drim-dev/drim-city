@@ -1,5 +1,4 @@
 using DrimCity.WebApi.Tests.Fixtures;
-using Xunit;
 
 namespace DrimCity.WebApi.Tests.Features;
 

@@ -1,5 +1,8 @@
 using System.Net;
+using Common.Tests.Database.Harnesses;
 using Common.Tests.Http.Extensions;
+using Common.Tests.Http.Harnesses;
+using DrimCity.WebApi.Database;
 using DrimCity.WebApi.Features.Auth.Requests;
 using DrimCity.WebApi.Features.Auth.Services;
 using DrimCity.WebApi.Tests.Features.Auth.Contracts;
@@ -9,15 +12,33 @@ using Microsoft.Extensions.DependencyInjection;
 namespace DrimCity.WebApi.Tests.Features.Auth.Requests;
 
 [Collection(AuthTestsCollection.Name)]
-public class AuthenticateTests
+public class AuthenticateTests : IAsyncLifetime
 {
     private readonly TestFixture _fixture;
+    private readonly HttpClientHarness<Program> _httpClient;
+    private readonly DatabaseHarness<Program, AppDbContext> _database;
+    private AsyncServiceScope _scope;
+    private PasswordHasher? _passwordHasher;
 
-    public AuthenticateTests(TestFixture fixture) => _fixture = fixture;
+    public AuthenticateTests(TestFixture fixture)
+    {
+        _fixture = fixture;
+        _httpClient = _fixture.HttpClient;
+        _database = _fixture.Database;
+    }
+
+    public async Task InitializeAsync()
+    {
+        await _fixture.Reset(CreateCancellationToken());
+        _scope = _fixture.Factory.Services.CreateAsyncScope();
+        _passwordHasher = _scope.ServiceProvider.GetRequiredService<PasswordHasher>();
+    }
+
+    public async Task DisposeAsync() => await _scope.DisposeAsync();
 
     private async Task<(TokenContract?, HttpResponseMessage)> Act(AuthenticateRequestContract request)
     {
-        var client = _fixture.HttpClient.CreateClient();
+        var client = _httpClient.CreateClient();
         return await client.PostTyped<TokenContract>("/auth", request, CreateCancellationToken());
     }
 
@@ -26,11 +47,8 @@ public class AuthenticateTests
     {
         const string password = "Qwert1234!";
 
-        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
-        var passwordHasher = scope.ServiceProvider.GetRequiredService<PasswordHasher>();
-
-        var account = CreateAccount(passwordHash: passwordHasher.Hash(password));
-        await _fixture.Database.Save(account);
+        var account = CreateAccount(passwordHash: _passwordHasher!.Hash(password));
+        await _database.Save(account);
 
         var (token, httpResponse) = await Act(new AuthenticateRequestContract(account.Login, password));
 
@@ -45,11 +63,8 @@ public class AuthenticateTests
     {
         const string password = "Qwert1234!";
 
-        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
-        var passwordHasher = scope.ServiceProvider.GetRequiredService<PasswordHasher>();
-
-        var account = CreateAccount(passwordHash: passwordHasher.Hash(password));
-        await _fixture.Database.Save(account);
+        var account = CreateAccount(passwordHash: _passwordHasher!.Hash(password));
+        await _database.Save(account);
 
         var (_, httpResponse) = await Act(new AuthenticateRequestContract(account.Login + "1", password));
 
@@ -61,10 +76,7 @@ public class AuthenticateTests
     {
         const string password = "Qwert1234!";
 
-        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
-        var passwordHasher = scope.ServiceProvider.GetRequiredService<PasswordHasher>();
-
-        var account = CreateAccount(passwordHash: passwordHasher.Hash(password));
+        var account = CreateAccount(passwordHash: _passwordHasher!.Hash(password));
         await _fixture.Database.Save(account);
 
         var (_, httpResponse) = await Act(new AuthenticateRequestContract(account.Login, password + "1"));
@@ -80,7 +92,7 @@ public class AuthenticateValidatorTests
     private readonly Authenticate.RequestValidator _validator = new();
 
     [Fact]
-    public void Should_not_have_errors_when_request_valid()
+    public void Should_not_have_errors_when_request_is_valid()
     {
         var request = new Authenticate.Request("sam", "Qwerty1234!");
 
@@ -100,7 +112,7 @@ public class AuthenticateValidatorTests
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Login)
-            .WithErrorCode("auth:validation:login_required");
+            .WithErrorCode("auth:validation:login_must_not_be_empty");
     }
 
     [Fact]
@@ -136,7 +148,7 @@ public class AuthenticateValidatorTests
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Password)
-            .WithErrorCode("auth:validation:password_required");
+            .WithErrorCode("auth:validation:password_must_not_be_empty");
     }
 
     [Fact]
