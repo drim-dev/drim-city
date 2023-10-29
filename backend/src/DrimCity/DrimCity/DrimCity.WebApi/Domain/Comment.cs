@@ -17,6 +17,7 @@ public class Comment
     public string Content { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public int AuthorId { get; private set; }
+    public Account? Author { get; private set; }
     public int PostId { get; private set; }
     public Post? Post { get; private set; }
 }

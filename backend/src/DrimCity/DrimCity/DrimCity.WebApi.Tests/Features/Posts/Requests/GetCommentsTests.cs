@@ -5,7 +5,6 @@ using Common.Tests.Http.Harnesses;
 using DrimCity.WebApi.Database;
 using DrimCity.WebApi.Domain;
 using DrimCity.WebApi.Features.Posts.Models;
-using DrimCity.WebApi.Tests.Features.Utils;
 using DrimCity.WebApi.Tests.Fixtures;
 using FluentAssertions.Equivalency;
 
@@ -14,28 +13,37 @@ namespace DrimCity.WebApi.Tests.Features.Posts.Requests;
 [Collection(PostsTestsCollection.Name)]
 public class GetCommentsTests : IAsyncLifetime
 {
+    private readonly TestFixture _fixture;
     private readonly DatabaseHarness<Program, AppDbContext> _database;
     private readonly HttpClientHarness<Program> _httpClient;
 
     public GetCommentsTests(TestFixture fixture)
     {
+        _fixture = fixture;
         _database = fixture.Database;
         _httpClient = fixture.HttpClient;
     }
 
-    public async Task InitializeAsync()
-    {
-        await _database.Clear(CreateCancellationToken());
-    }
+    public Task InitializeAsync() => _fixture.Reset(CreateCancellationToken());
 
-    public Task DisposeAsync() =>
-        Task.CompletedTask;
+    public Task DisposeAsync() => Task.CompletedTask;
+
+    private async Task<(CommentModel[]?, HttpResponseMessage httpResponse)> Act(string postSlug)
+    {
+        var httpClient = _httpClient.CreateClient();
+        return await httpClient.GetTyped<CommentModel[]>($"/posts/{postSlug}/comments", CreateCancellationToken());
+    }
 
     [Fact]
     public async Task Should_return_comments()
     {
-        var post = await CreatePost("postSlug");
-        var comments = await CreateComments(post, 3);
+        var account = CreateAccount();
+        await _database.Save(account);
+
+        var post = CreatePost(account.Id);
+        await _database.Save(post);
+
+        var comments = await CreateAndSaveComments(post, 3);
 
         var (responseComments, httpResponse) = await Act(post.Slug);
 
@@ -48,10 +56,16 @@ public class GetCommentsTests : IAsyncLifetime
     [Fact]
     public async Task Should_return_comments_only_by_post_in_request()
     {
-        var unexpectedPost = await CreatePost("unexpectedPostSlug");
-        var unexpectedComments = await CreateComments(unexpectedPost, 1);
-        var expectedPost = await CreatePost("expectedPostSlug");
-        var expectedComments = await CreateComments(expectedPost, 1);
+        var account = CreateAccount();
+        await _database.Save(account);
+
+        var unexpectedPost = CreatePost(account.Id);
+        var expectedPost = CreatePost(account.Id);
+
+        await _database.Save(unexpectedPost, expectedPost);
+
+        var unexpectedComments = await CreateAndSaveComments(unexpectedPost, 1);
+        var expectedComments = await CreateAndSaveComments(expectedPost, 1);
 
         var (responseComments, _) = await Act(expectedPost.Slug);
 
@@ -73,10 +87,16 @@ public class GetCommentsTests : IAsyncLifetime
     [Fact]
     public async Task Should_return_comments_ordered_ascending_by_created_at()
     {
-        var post = await CreatePost("postSlug");
-        await CreateComment(post, 20.October(2023).AsUtc().AddHours(3));
-        await CreateComment(post, 20.October(2023).AsUtc().AddHours(1));
-        await CreateComment(post, 20.October(2023).AsUtc().AddHours(2));
+        var account = CreateAccount();
+        await _database.Save(account);
+
+        var post = CreatePost(account.Id);
+        await _database.Save(post);
+
+        var comment3 = CreateComment(account.Id, post.Id, 20.October(2023).AsUtc().AddHours(3));
+        var comment1 = CreateComment(account.Id, post.Id, 20.October(2023).AsUtc().AddHours(1));
+        var comment2 = CreateComment(account.Id, post.Id, 20.October(2023).AsUtc().AddHours(2));
+        await _database.Save(comment1, comment2, comment3);
 
         var (responseComments, httpResponse) = await Act(post.Slug);
 
@@ -86,45 +106,21 @@ public class GetCommentsTests : IAsyncLifetime
         responseComments.Should().BeInAscendingOrder(commentModel => commentModel.CreatedAt);
     }
 
-    private async Task<(CommentModel[]?, HttpResponseMessage httpResponse)> Act(string postSlug)
+    private async Task<Comment[]> CreateAndSaveComments(Post post, int count, DateTime? createdAt = null)
     {
-        var httpClient = _httpClient.CreateClient();
-        return await httpClient.GetTyped<CommentModel[]>($"/posts/{postSlug}/comments", CreateCancellationToken());
+        var comments = Enumerable.Range(1, count)
+            .Select(_ => CreateComment(post.AuthorId, post.Id, createdAt))
+            .ToArray();
+
+        await _database.Save(comments);
+
+        return comments;
     }
 
-    private async Task<Post> CreatePost(string slug)
-    {
-        return await _database.Execute(async dbContext =>
-        {
-            var post = FakerFactory.CreatePost(slug);
-            await dbContext.Posts.AddAsync(post, CreateCancellationToken());
-            await dbContext.SaveChangesAsync();
-            return post;
-        });
-    }
-
-    private Task<Comment[]> CreateComment(Post post, DateTime? createdAt = null) =>
-        CreateComments(post, 1, createdAt);
-
-    private async Task<Comment[]> CreateComments(Post post, int count, DateTime? createdAt = null)
-    {
-        return await _database.Execute(async dbContext =>
-        {
-            var comments = Enumerable.Range(1, count)
-                .Select(_ => FakerFactory.CreateComment(post.Id, createdAt))
-                .ToArray();
-
-            await dbContext.Comments.AddRangeAsync(comments, CreateCancellationToken());
-            await dbContext.SaveChangesAsync(CreateCancellationToken());
-
-            return comments;
-        });
-    }
-
-    private EquivalencyAssertionOptions<Comment> CommentEquivalencyOptions(EquivalencyAssertionOptions<Comment> config)
-    {
-        return config
+    private EquivalencyAssertionOptions<Comment> CommentEquivalencyOptions(EquivalencyAssertionOptions<Comment> config) =>
+        config
+            .Excluding(comment => comment.AuthorId)
+            .Excluding(comment => comment.Author)
             .Excluding(comment => comment.PostId)
             .Excluding(comment => comment.Post);
-    }
 }

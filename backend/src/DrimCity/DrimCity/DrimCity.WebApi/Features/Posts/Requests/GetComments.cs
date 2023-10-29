@@ -13,16 +13,15 @@ public static class GetComments
     {
         public void MapEndpoint(WebApplication app)
         {
-            app.MapGet("/posts/{slug}/comments",
-                async Task<Results<Ok<CommentModel[]>, NotFound>>
-                    (IMediator mediator, string slug, CancellationToken cancellationToken) =>
-                {
-                    var comments = await mediator.Send(new Request(slug), cancellationToken);
+            app.MapGet("/posts/{slug}/comments", async Task<Results<Ok<CommentModel[]>, NotFound>>
+                (IMediator mediator, string slug, CancellationToken cancellationToken) =>
+            {
+                var comments = await mediator.Send(new Request(slug), cancellationToken);
 
-                    return comments is null
-                        ? TypedResults.NotFound()
-                        : TypedResults.Ok(comments);
-                });
+                return comments is null
+                    ? TypedResults.NotFound()
+                    : TypedResults.Ok(comments);
+            });
         }
     }
 

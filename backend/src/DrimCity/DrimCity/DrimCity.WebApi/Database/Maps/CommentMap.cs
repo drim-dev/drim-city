@@ -20,7 +20,10 @@ public static class CommentMap
         entity.Property(x => x.CreatedAt)
             .IsRequired();
 
-        entity.Property(x => x.AuthorId)
+        entity
+            .HasOne<Account>(comment => comment.Author)
+            .WithMany()
+            .HasForeignKey(comment => comment.AuthorId)
             .IsRequired();
 
         entity

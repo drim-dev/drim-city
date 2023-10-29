@@ -24,7 +24,9 @@ public static class PostMap
         entity.Property(x => x.CreatedAt)
             .IsRequired();
 
-        entity.Property(x => x.AuthorId)
+        entity.HasOne(x => x.Author)
+            .WithMany()
+            .HasForeignKey(x => x.AuthorId)
             .IsRequired();
 
         entity.Property(x => x.Slug)

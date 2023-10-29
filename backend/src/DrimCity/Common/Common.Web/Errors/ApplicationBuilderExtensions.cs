@@ -61,6 +61,10 @@ public static class ApplicationBuilderExtensions
                             ex.Message,
                             StatusCodes.Status500InternalServerError);
                         break;
+                    case UnauthorizedException ex:
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        await context.Response.WriteAsync(ex.Message);
+                        break;
                     default:
                         await WriteProblemDetailsToResponse(context,
                             "Internal error",

@@ -26,5 +26,7 @@ public class Post
 
     public int AuthorId { get; private set; }
 
+    public Account? Author { get; private set; }
+
     public string Slug { get; private set; }
 }
