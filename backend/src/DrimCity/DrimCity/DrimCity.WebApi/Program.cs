@@ -2,6 +2,7 @@ using System.Reflection;
 using Common.Web.Endpoints;
 using Common.Web.Errors;
 using Common.Web.Validation.Behaviors;
+using DrimCity.WebApi;
 using DrimCity.WebApi.Database;
 using DrimCity.WebApi.Features.Auth.Extensions;
 using FluentValidation;
@@ -22,7 +23,11 @@ builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
 builder.AddAuth();
 
+builder.AddSwaggerForDevelopmentEnv();
+
 var app = builder.Build();
+
+app.UseSwaggerForDevelopmentEnv();
 
 app.MapProblemDetails();
 
@@ -37,5 +42,5 @@ app.Run();
 
 namespace DrimCity.WebApi
 {
-    public partial class Program {}
+    public class Program { }
 }

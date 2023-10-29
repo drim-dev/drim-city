@@ -1,18 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFramework>net7.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        <LangVersion>11</LangVersion>
-    </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>11</LangVersion>
+  </PropertyGroup>
 
-    <ItemGroup>
-      <ProjectReference Include="..\..\Common\Common.Tests.Database\Common.Tests.Database.csproj" />
-      <ProjectReference Include="..\..\Common\Common.Tests.Http\Common.Tests.Http.csproj" />
-      <ProjectReference Include="..\DrimCity.WebApi\DrimCity.WebApi.csproj" />
-      <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.7.2" />
-    </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Common\Common.Tests.Database\Common.Tests.Database.csproj" />
+    <ProjectReference Include="..\..\Common\Common.Tests.Http\Common.Tests.Http.csproj" />
+    <ProjectReference Include="..\DrimCity.WebApi\DrimCity.WebApi.csproj" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.7.2" />
+  </ItemGroup>
 
     <ItemGroup>
       <None Remove="appsettings.json" />
