@@ -14,8 +14,7 @@ public static class HttpClientExtensions
     }
 
     public static async Task<(TResponse?, HttpResponseMessage httpResponse)> GetTyped<TResponse>(
-        this HttpClient client, string url,
-        CancellationToken cancellationToken)
+        this HttpClient client, string url, CancellationToken cancellationToken)
     {
         var httpResponse = await client.GetAsync(url, cancellationToken);
 
@@ -31,6 +30,12 @@ public static class HttpClientExtensions
         }
 
         var responseString = await httpResponse.Content.ReadAsStringAsync(cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(responseString))
+        {
+            return (default, httpResponse);
+        }
+
         var response = JsonSerializer.Deserialize<TResponse>(
             responseString,
             new JsonSerializerOptions
