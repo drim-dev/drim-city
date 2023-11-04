@@ -1,15 +1,16 @@
 using System.Net;
-using System.Web;
 using Common.Tests.Database.Harnesses;
-using Common.Tests.Http.Extensions;
 using Common.Tests.Http.Harnesses;
 using DrimCity.WebApi.Database;
 using DrimCity.WebApi.Domain;
 using DrimCity.WebApi.Features.Posts.Requests;
+using DrimCity.WebApi.Tests.Common.Contracts;
 using DrimCity.WebApi.Tests.Features.Posts.Contracts;
 using DrimCity.WebApi.Tests.Fixtures;
 using DrimCity.WebApi.Tests.Utils;
 using FluentAssertions.Equivalency;
+using Microsoft.AspNetCore.Http;
+using RestSharp;
 
 namespace DrimCity.WebApi.Tests.Features.Posts.Requests;
 
@@ -36,9 +37,10 @@ public class GetPostsTests : IAsyncLifetime
     {
         var posts = await CreatePosts(3);
 
-        var (responsePosts, httpResponse) = await Act();
+        var response = await Act();
 
-        httpResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var responsePosts = response.Data;
         responsePosts.Should().NotBeNullOrEmpty();
 
         responsePosts.Should().BeEquivalentTo(posts, PostEquivalencyConfig);
@@ -49,9 +51,10 @@ public class GetPostsTests : IAsyncLifetime
     {
         await CreatePost(new string('a', 2010));
 
-        var (responsePosts, httpResponse) = await Act();
+        var response = await Act();
 
-        httpResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var responsePosts = response.Data;
         responsePosts.Should().NotBeNullOrEmpty();
 
         responsePosts.Should().ContainSingle();
@@ -67,9 +70,10 @@ public class GetPostsTests : IAsyncLifetime
         await CreatePost(createdAt: 02.November(2023).AsUtc().AddHours(1));
         await CreatePost(createdAt: 02.November(2023).AsUtc().AddHours(2));
 
-        var (responsePosts, httpResponse) = await Act();
+        var response = await Act();
 
-        httpResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var responsePosts = response.Data;
         responsePosts.Should().NotBeNullOrEmpty();
 
         responsePosts.Should().BeInDescendingOrder(x => x.CreatedAt);
@@ -83,31 +87,54 @@ public class GetPostsTests : IAsyncLifetime
 
         const int pageSize = 1;
         const int pageNumber = 2;
-        var (responsePosts, httpResponse) = await Act(pageSize, pageNumber);
+        var response = await Act(pageSize, pageNumber);
 
-        httpResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var responsePosts = response.Data;
         responsePosts.Should().NotBeNullOrEmpty();
 
         responsePosts.Should().NotContainEquivalentOf(post2, PostEquivalencyConfig);
         responsePosts.Should().ContainEquivalentOf(post1, PostEquivalencyConfig);
     }
 
-    private async Task<(PostContract[]?, HttpResponseMessage httpResponse)> Act(int? pageSize = null,
-        int? pageNumber = null)
+    [Fact]
+    public async Task Should_return_bad_request_when_query_parameters_have_not_int_values()
     {
-        var queryParameters = HttpUtility.ParseQueryString(string.Empty);
-        if (pageSize.HasValue)
+        var response = await ActWithProblem("NaN", "NaN");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problemDetails = response.Data;
+        problemDetails.Should().NotBeNull();
+
+        problemDetails!.Status.Should().Be(StatusCodes.Status400BadRequest);
+        problemDetails.Title.Should().Be("Bad request");
+    }
+
+    private async Task<RestResponse<ProblemDetailsContract?>> ActWithProblem(string? pageSize = null,
+        string? pageNumber = null) =>
+        await ExecuteRequest<ProblemDetailsContract?>(pageSize, pageNumber);
+
+    private async Task<RestResponse<PostContract[]>> Act(int? pageSize = null,
+        int? pageNumber = null) =>
+        await ExecuteRequest<PostContract[]>(pageSize?.ToString(), pageNumber?.ToString());
+
+    private async Task<RestResponse<TResponse>> ExecuteRequest<TResponse>(string? pageSize, string? pageNumber)
+    {
+        var request = new RestRequest("/posts");
+        if (pageSize is not null)
         {
-            queryParameters.Add("pageSize", pageSize.Value.ToString());
+            request.AddQueryParameter("pageSize", pageSize);
         }
 
-        if (pageNumber.HasValue)
+        if (pageNumber is not null)
         {
-            queryParameters.Add("pageNumber", pageNumber.Value.ToString());
+            request.AddQueryParameter("pageNumber", pageNumber);
         }
 
+        //TODO: question: what is about to use RestSharp library? It provides ease way to build requests and ease access to response status, object, raw content, etc.
         var httpClient = _httpClient.CreateClient();
-        return await httpClient.GetTyped<PostContract[]>($"/posts?{queryParameters}", CreateCancellationToken());
+        var restClient = new RestClient(httpClient);
+        return await restClient.ExecuteAsync<TResponse>(request, CreateCancellationToken());
     }
 
     private async Task<Post> CreatePost(string? content = null, DateTime? createdAt = null)
