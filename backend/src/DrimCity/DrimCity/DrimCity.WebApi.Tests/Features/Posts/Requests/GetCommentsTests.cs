@@ -4,7 +4,7 @@ using Common.Tests.Http.Extensions;
 using Common.Tests.Http.Harnesses;
 using DrimCity.WebApi.Database;
 using DrimCity.WebApi.Domain;
-using DrimCity.WebApi.Features.Posts.Models;
+using DrimCity.WebApi.Tests.Features.Posts.Contracts;
 using DrimCity.WebApi.Tests.Fixtures;
 using FluentAssertions.Equivalency;
 
@@ -13,8 +13,8 @@ namespace DrimCity.WebApi.Tests.Features.Posts.Requests;
 [Collection(PostsTestsCollection.Name)]
 public class GetCommentsTests : IAsyncLifetime
 {
-    private readonly TestFixture _fixture;
     private readonly DatabaseHarness<Program, AppDbContext> _database;
+    private readonly TestFixture _fixture;
     private readonly HttpClientHarness<Program> _httpClient;
 
     public GetCommentsTests(TestFixture fixture)
@@ -28,10 +28,10 @@ public class GetCommentsTests : IAsyncLifetime
 
     public Task DisposeAsync() => Task.CompletedTask;
 
-    private async Task<(CommentModel[]?, HttpResponseMessage httpResponse)> Act(string postSlug)
+    private async Task<(CommentContract[]?, HttpResponseMessage httpResponse)> Act(string postSlug)
     {
         var httpClient = _httpClient.CreateClient();
-        return await httpClient.GetTyped<CommentModel[]>($"/posts/{postSlug}/comments", CreateCancellationToken());
+        return await httpClient.GetTyped<CommentContract[]>($"/posts/{postSlug}/comments", CreateCancellationToken());
     }
 
     [Fact]
@@ -112,12 +112,13 @@ public class GetCommentsTests : IAsyncLifetime
             .Select(_ => CreateComment(post.AuthorId, post.Id, createdAt))
             .ToArray();
 
-        await _database.Save(comments);
+        await _database.Save(comments.Cast<object>().ToArray());
 
         return comments;
     }
 
-    private EquivalencyAssertionOptions<Comment> CommentEquivalencyOptions(EquivalencyAssertionOptions<Comment> config) =>
+    private EquivalencyAssertionOptions<Comment>
+        CommentEquivalencyOptions(EquivalencyAssertionOptions<Comment> config) =>
         config
             .Excluding(comment => comment.AuthorId)
             .Excluding(comment => comment.Author)
