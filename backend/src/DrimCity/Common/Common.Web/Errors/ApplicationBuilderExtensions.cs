@@ -36,11 +36,11 @@ public static class ApplicationBuilderExtensions
                             });
                         break;
                     }
-                    case BadHttpRequestException ex:
+                    case BadHttpRequestException:
                         await WriteProblemDetailsToResponse(context,
                             "Bad request",
                             "https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400",
-                            ex.Message, //TODO: question: is it safe to show this message to user? Or we should use some generic message? But it will be hard to investigate the problem for frontend developer
+                            null,
                             StatusCodes.Status400BadRequest);
                         break;
                     case LogicConflictException ex:
@@ -85,7 +85,7 @@ public static class ApplicationBuilderExtensions
 
         return app;
 
-        static async Task WriteProblemDetailsToResponse(HttpContext context, string title, string type, string detail,
+        static async Task WriteProblemDetailsToResponse(HttpContext context, string title, string type, string? detail,
             int statusCode, Action<ProblemDetails>? configureProblemDetails = null)
         {
             var problemDetails = new ProblemDetails

@@ -9,7 +9,6 @@ using DrimCity.WebApi.Tests.Features.Posts.Contracts;
 using DrimCity.WebApi.Tests.Fixtures;
 using DrimCity.WebApi.Tests.Utils;
 using FluentAssertions.Equivalency;
-using Microsoft.AspNetCore.Http;
 using RestSharp;
 
 namespace DrimCity.WebApi.Tests.Features.Posts.Requests;
@@ -110,14 +109,16 @@ public class GetPostsTests : IAsyncLifetime
     [Fact]
     public async Task Should_return_bad_request_when_query_parameters_have_not_int_values()
     {
-        var response = await ActWithProblem("NaN", "NaN");
+        var response = await ActWithProblem("NaN");
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var expectedHttpStatusCode = HttpStatusCode.BadRequest;
+        response.StatusCode.Should().Be(expectedHttpStatusCode);
         var problemDetails = response.Data;
         problemDetails.Should().NotBeNull();
 
-        problemDetails!.Status.Should().Be(StatusCodes.Status400BadRequest);
+        problemDetails!.Status.Should().Be(expectedHttpStatusCode);
         problemDetails.Title.Should().Be("Bad request");
+        problemDetails.Detail.Should().BeNull();
     }
 
     [Theory]
@@ -153,9 +154,8 @@ public class GetPostsTests : IAsyncLifetime
         responsePosts.Should().HaveCount(expectedMaximumCount);
     }
 
-    private async Task<RestResponse<ProblemDetailsContract?>> ActWithProblem(string? pageSize = null,
-        string? pageNumber = null) =>
-        await ExecuteRequest<ProblemDetailsContract?>(pageSize, pageNumber);
+    private async Task<RestResponse<ProblemDetailsContract?>> ActWithProblem(string? pageSize = null) =>
+        await ExecuteRequest<ProblemDetailsContract?>(pageSize);
 
     private async Task<RestResponse<GetPostsResponseContract>> Act(int? pageSize = null,
         string? pageToken = null) =>
