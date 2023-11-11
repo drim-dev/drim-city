@@ -40,7 +40,7 @@ public class GetPostsTests : IAsyncLifetime
         var response = await Act();
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var responsePosts = response.Data;
+        var responsePosts = response.Data?.Posts;
         responsePosts.Should().NotBeNullOrEmpty();
 
         responsePosts.Should().BeEquivalentTo(posts, PostEquivalencyConfig);
@@ -54,7 +54,7 @@ public class GetPostsTests : IAsyncLifetime
         var response = await Act();
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var responsePosts = response.Data;
+        var responsePosts = response.Data?.Posts;
         responsePosts.Should().NotBeNullOrEmpty();
 
         responsePosts.Should().ContainSingle();
@@ -73,7 +73,7 @@ public class GetPostsTests : IAsyncLifetime
         var response = await Act();
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var responsePosts = response.Data;
+        var responsePosts = response.Data?.Posts;
         responsePosts.Should().NotBeNullOrEmpty();
 
         responsePosts.Should().BeInDescendingOrder(x => x.CreatedAt);
@@ -82,19 +82,29 @@ public class GetPostsTests : IAsyncLifetime
     [Fact]
     public async Task Should_return_posts_by_pages()
     {
-        var post1 = await CreatePost(createdAt: 02.November(2023).AsUtc().AddHours(1));
-        var post2 = await CreatePost(createdAt: 02.November(2023).AsUtc().AddHours(2));
+        var post1 = await CreatePost(createdAt: 09.November(2023).AsUtc());
+        var post2 = await CreatePost(createdAt: 08.November(2023).AsUtc());
+        var post3 = await CreatePost(createdAt: 07.November(2023).AsUtc());
 
-        const int pageSize = 1;
-        const int pageNumber = 2;
-        var response = await Act(pageSize, pageNumber);
+        var responsePage1 = await Act(1);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var responsePosts = response.Data;
-        responsePosts.Should().NotBeNullOrEmpty();
+        responsePage1.IsSuccessful.Should().BeTrue(responsePage1.ErrorException?.Message);
+        responsePage1.StatusCode.Should().Be(HttpStatusCode.OK);
+        responsePage1.Data.Should().NotBeNull();
 
-        responsePosts.Should().NotContainEquivalentOf(post2, PostEquivalencyConfig);
-        responsePosts.Should().ContainEquivalentOf(post1, PostEquivalencyConfig);
+        responsePage1.Data!.Posts.Should().ContainEquivalentOf(post1, PostEquivalencyConfig);
+        responsePage1.Data.Posts.Should().NotContainEquivalentOf(post2, PostEquivalencyConfig);
+        responsePage1.Data.NextPageToken.Should().NotBeNullOrEmpty();
+
+        var responsePage2 = await Act(2, responsePage1.Data.NextPageToken);
+
+        responsePage2.StatusCode.Should().Be(HttpStatusCode.OK);
+        responsePage2.Data.Should().NotBeNull();
+
+        responsePage2.Data!.Posts.Should().ContainEquivalentOf(post2, PostEquivalencyConfig);
+        responsePage2.Data.Posts.Should().ContainEquivalentOf(post3, PostEquivalencyConfig);
+        responsePage2.Data.Posts.Should().NotContainEquivalentOf(post1, PostEquivalencyConfig);
+        responsePage2.Data.NextPageToken.Should().BeNull();
     }
 
     [Fact]
@@ -110,15 +120,48 @@ public class GetPostsTests : IAsyncLifetime
         problemDetails.Title.Should().Be("Bad request");
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0)]
+    public async Task Should_return_default_count_of_posts_if_page_size_is_unspecified(int? pageSize)
+    {
+        await CreatePosts(11);
+
+        var response = await Act(pageSize);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var responsePosts = response.Data?.Posts;
+        responsePosts.Should().NotBeNullOrEmpty();
+
+        var expectedDefaultCount = 10;
+        responsePosts.Should().HaveCount(expectedDefaultCount);
+    }
+
+    [Fact]
+    public async Task Should_return_maximum_count_of_posts_if_page_size_is_bigger_than_maximum()
+    {
+        const int countOfPosts = 1001;
+        await CreatePosts(countOfPosts);
+
+        var response = await Act(countOfPosts);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var responsePosts = response.Data?.Posts;
+        responsePosts.Should().NotBeNullOrEmpty();
+
+        var expectedMaximumCount = 1000;
+        responsePosts.Should().HaveCount(expectedMaximumCount);
+    }
+
     private async Task<RestResponse<ProblemDetailsContract?>> ActWithProblem(string? pageSize = null,
         string? pageNumber = null) =>
         await ExecuteRequest<ProblemDetailsContract?>(pageSize, pageNumber);
 
-    private async Task<RestResponse<PostContract[]>> Act(int? pageSize = null,
-        int? pageNumber = null) =>
-        await ExecuteRequest<PostContract[]>(pageSize?.ToString(), pageNumber?.ToString());
+    private async Task<RestResponse<GetPostsResponseContract>> Act(int? pageSize = null,
+        string? pageToken = null) =>
+        await ExecuteRequest<GetPostsResponseContract>(pageSize?.ToString(), pageToken);
 
-    private async Task<RestResponse<TResponse>> ExecuteRequest<TResponse>(string? pageSize, string? pageNumber)
+    private async Task<RestResponse<TResponse>> ExecuteRequest<TResponse>(string? pageSize, string? pageToken = null)
     {
         var request = new RestRequest("/posts");
         if (pageSize is not null)
@@ -126,9 +169,9 @@ public class GetPostsTests : IAsyncLifetime
             request.AddQueryParameter("pageSize", pageSize);
         }
 
-        if (pageNumber is not null)
+        if (pageToken is not null)
         {
-            request.AddQueryParameter("pageNumber", pageNumber);
+            request.AddQueryParameter("pageToken", pageToken);
         }
 
         //TODO: question: what is about to use RestSharp library? It provides ease way to build requests and ease access to response status, object, raw content, etc.
@@ -167,47 +210,34 @@ public class GetPostsTests : IAsyncLifetime
     }
 }
 
+public record GetPostsResponseContract(PostContract[] Posts, string? NextPageToken);
+
 public class GetPostsRequestValidatorTests
 {
     private const int AnyValidPageSize = 10;
-    private const int AnyValidPageNumber = 1;
+    private const GetPosts.PageToken? AnyValidPageToken = null;
 
     private readonly GetPosts.RequestValidator _requestValidator = new();
 
     [Fact]
     public void Should_not_have_errors_when_request_is_valid()
     {
-        var request = new GetPosts.Request(AnyValidPageSize, AnyValidPageNumber);
+        var request = new GetPosts.Request(AnyValidPageSize, AnyValidPageToken);
 
         var result = _requestValidator.TestValidate(request);
 
         result.ShouldNotHaveAnyValidationErrors();
     }
 
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    public void Should_have_error_when_page_size_less_than_1(int pageSize)
+    [Fact]
+    public void Should_have_error_when_page_size_is_negative()
     {
         //TODO: question: should we use AutoBogus faker for testing request validators?
-        var request = new GetPosts.Request(pageSize, AnyValidPageNumber);
+        var request = new GetPosts.Request(-1, AnyValidPageToken);
 
         var result = _requestValidator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.PageSize)
-            .WithErrorCode("posts:validation:page_size_must_be_greater_or_equal_one");
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    public void Should_have_error_when_page_number_less_than_1(int pageNumber)
-    {
-        var request = new GetPosts.Request(AnyValidPageSize, pageNumber);
-
-        var result = _requestValidator.TestValidate(request);
-
-        result.ShouldHaveValidationErrorFor(x => x.PageNumber)
-            .WithErrorCode("posts:validation:page_number_must_be_greater_or_equal_one");
+            .WithErrorCode("posts:validation:page_size_must_be_positive");
     }
 }
