@@ -1,4 +1,6 @@
 using System.Net;
+using AutoBogus;
+using Bogus;
 using DrimCity.WebApi.Domain;
 using DrimCity.WebApi.Features.Auth.Requests;
 using DrimCity.WebApi.Tests.Common.Contracts;
@@ -81,7 +83,7 @@ public class CreateAccountValidatorTests
     [Fact]
     public void Should_not_have_errors_when_request_is_valid()
     {
-        var request = new CreateAccount.Request("sam", "Qwerty1234!");
+        var request = CreateRequest("sam", "Qwerty1234!");
 
         var result = _validator.TestValidate(request);
 
@@ -94,7 +96,7 @@ public class CreateAccountValidatorTests
     [InlineData(" ")]
     public void Should_have_error_when_login_empty(string login)
     {
-        var request = new CreateAccount.Request(login, "Qwerty1234!");
+        var request = CreateRequestWithLogin(login);
 
         var result = _validator.TestValidate(request);
 
@@ -105,7 +107,7 @@ public class CreateAccountValidatorTests
     [Fact]
     public void Should_have_error_when_login_less_min_length()
     {
-        var request = new CreateAccount.Request("sa", "Qwerty1234!");
+        var request = CreateRequestWithLogin("sa");
 
         var result = _validator.TestValidate(request);
 
@@ -116,7 +118,7 @@ public class CreateAccountValidatorTests
     [Fact]
     public void Should_have_error_when_login_greater_max_length()
     {
-        var request = new CreateAccount.Request(new string('a', 33), "Qwerty1234!");
+        var request = CreateRequestWithLogin(new string('a', 33));
 
         var result = _validator.TestValidate(request);
 
@@ -131,7 +133,7 @@ public class CreateAccountValidatorTests
     [InlineData("%")]
     public void Should_have_error_when_login_contains_forbidden_symbols(string symbol)
     {
-        var request = new CreateAccount.Request("sam" + symbol, "Qwerty1234!");
+        var request = CreateRequestWithLogin("sam" + symbol);
 
         var result = _validator.TestValidate(request);
 
@@ -145,7 +147,7 @@ public class CreateAccountValidatorTests
     [InlineData(" ")]
     public void Should_have_error_when_password_empty(string password)
     {
-        var request = new CreateAccount.Request("sam", password);
+        var request = CreateRequestWithPassword(password);
 
         var result = _validator.TestValidate(request);
 
@@ -156,7 +158,7 @@ public class CreateAccountValidatorTests
     [Fact]
     public void Should_have_error_when_password_less_min_length()
     {
-        var request = new CreateAccount.Request("sam", "Qwer12!");
+        var request = CreateRequestWithPassword("Qwer12!");
 
         var result = _validator.TestValidate(request);
 
@@ -167,7 +169,7 @@ public class CreateAccountValidatorTests
     [Fact]
     public void Should_have_error_when_password_greater_max_length()
     {
-        var request = new CreateAccount.Request("sam", "Qwerty1234!" + new string('a', 512));
+        var request = CreateRequestWithPassword("Qwerty1234!" + new string('a', 512));
 
         var result = _validator.TestValidate(request);
 
@@ -178,7 +180,7 @@ public class CreateAccountValidatorTests
     [Fact]
     public void Should_have_error_when_password_not_contains_uppercase_letter()
     {
-        var request = new CreateAccount.Request("sam", "qwerty1234!");
+        var request = CreateRequestWithPassword("qwerty1234!");
 
         var result = _validator.TestValidate(request);
 
@@ -189,7 +191,7 @@ public class CreateAccountValidatorTests
     [Fact]
     public void Should_have_error_when_password_not_contains_lowercase_letter()
     {
-        var request = new CreateAccount.Request("sam", "QWERTY1234!");
+        var request = CreateRequestWithPassword("QWERTY1234!");
 
         var result = _validator.TestValidate(request);
 
@@ -200,7 +202,7 @@ public class CreateAccountValidatorTests
     [Fact]
     public void Should_have_error_when_password_not_contains_number()
     {
-        var request = new CreateAccount.Request("sam", "QWERTYqwer!");
+        var request = CreateRequestWithPassword("QWERTYqwer!");
 
         var result = _validator.TestValidate(request);
 
@@ -211,11 +213,30 @@ public class CreateAccountValidatorTests
     [Fact]
     public void Should_have_error_when_password_not_contains_special_symbol()
     {
-        var request = new CreateAccount.Request("sam", "QWERTYqwer4");
+        var request = CreateRequestWithPassword("QWERTYqwer4");
 
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Password)
             .WithErrorCode("auth:validation:password_must_contain_special_symbol");
     }
+
+    private CreateAccount.Request CreateRequestWithLogin(string? login) =>
+        CreateRequestFaker()
+            .RuleFor(request => request.Login, login)
+            .Generate();
+
+    private CreateAccount.Request CreateRequestWithPassword(string? password) =>
+        CreateRequestFaker()
+            .RuleFor(request => request.Password, password)
+            .Generate();
+
+    private CreateAccount.Request CreateRequest(string? login = null, string? password = null) =>
+        CreateRequestFaker(login, password)
+            .Generate();
+
+    private static Faker<CreateAccount.Request> CreateRequestFaker(string? login = null, string? password = null) =>
+        new AutoFaker<CreateAccount.Request>()
+            .RuleFor(request => request.Login, faker => login ?? faker.Internet.UserName())
+            .RuleFor(request => request.Password, faker => password ?? faker.Internet.Password());
 }

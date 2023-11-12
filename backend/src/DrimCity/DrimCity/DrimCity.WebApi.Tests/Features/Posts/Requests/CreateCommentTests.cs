@@ -1,5 +1,6 @@
 using System.Net;
 using AutoBogus;
+using Bogus;
 using Common.Tests.Database.Harnesses;
 using DrimCity.WebApi.Database;
 using DrimCity.WebApi.Domain;
@@ -94,15 +95,15 @@ public class CreateCommentTests : IAsyncLifetime
 
 public record CreateCommentRequestContract(string Content);
 
-public class AddCommentValidatorTests
+public class CreateCommentValidatorTests
 {
-    private const string AnyValidSlug = "any-valid-slug";
     private readonly CreateComment.RequestValidator _validator = new();
 
     [Fact]
     public void Should_not_have_errors_when_request_is_valid()
     {
-        var request = new CreateComment.Request(1, "Valid content", AnyValidSlug);
+        //TODO: question: If we use AutoFaker then values for a valid request are implicit. Is it ok? Also, values are random and tests can fail randomly.
+        var request = CreateRequest();
 
         var result = _validator.TestValidate(request);
 
@@ -115,7 +116,7 @@ public class AddCommentValidatorTests
     [InlineData(" ")]
     public void Should_have_error_when_content_empty(string content)
     {
-        var request = new CreateComment.Request(1, content, AnyValidSlug);
+        var request = CreateRequest(content);
 
         var result = _validator.TestValidate(request);
 
@@ -127,7 +128,7 @@ public class AddCommentValidatorTests
     [Fact]
     public void Should_have_error_when_content_greater_max_length()
     {
-        var request = new CreateComment.Request(1, new string('a', 10_001), AnyValidSlug);
+        var request = CreateRequest(new string('a', 10_001));
 
         var result = _validator.TestValidate(request);
 
@@ -135,4 +136,17 @@ public class AddCommentValidatorTests
             .ShouldHaveValidationErrorFor(x => x.Content)
             .WithErrorCode("posts:validation:comment_content_must_be_less_or_equal_max_length");
     }
+
+    private CreateComment.Request CreateRequest(string? content) =>
+        CreateRequestFaker()
+            .RuleFor(request => request.Content, content)
+            .Generate();
+
+    private CreateComment.Request CreateRequest() =>
+        CreateRequestFaker()
+            .Generate();
+
+    private static Faker<CreateComment.Request> CreateRequestFaker() =>
+        new AutoFaker<CreateComment.Request>()
+            .RuleFor(request => request.Content, faker => faker.Random.Words());
 }

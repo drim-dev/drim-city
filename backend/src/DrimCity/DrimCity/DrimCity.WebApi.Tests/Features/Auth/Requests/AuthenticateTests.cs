@@ -1,4 +1,6 @@
 using System.Net;
+using AutoBogus;
+using Bogus;
 using Common.Tests.Database.Harnesses;
 using Common.Tests.Http.Harnesses;
 using DrimCity.WebApi.Database;
@@ -96,7 +98,7 @@ public class AuthenticateValidatorTests
     [Fact]
     public void Should_not_have_errors_when_request_is_valid()
     {
-        var request = new Authenticate.Request("sam", "Qwerty1234!");
+        var request = CreateRequest("sam", "Qwerty1234!");
 
         var result = _validator.TestValidate(request);
 
@@ -109,7 +111,7 @@ public class AuthenticateValidatorTests
     [InlineData(" ")]
     public void Should_have_error_when_login_empty(string login)
     {
-        var request = new Authenticate.Request(login, "Qwerty1234!");
+        var request = CreateRequestWithLogin(login);
 
         var result = _validator.TestValidate(request);
 
@@ -120,7 +122,7 @@ public class AuthenticateValidatorTests
     [Fact]
     public void Should_have_error_when_login_less_min_length()
     {
-        var request = new Authenticate.Request("sa", "Qwerty1234!");
+        var request = CreateRequestWithLogin("sa");
 
         var result = _validator.TestValidate(request);
 
@@ -131,7 +133,7 @@ public class AuthenticateValidatorTests
     [Fact]
     public void Should_have_error_when_login_greater_max_length()
     {
-        var request = new Authenticate.Request(new string('a', 33), "Qwerty1234!");
+        var request = CreateRequestWithLogin(new string('a', 33));
 
         var result = _validator.TestValidate(request);
 
@@ -145,7 +147,7 @@ public class AuthenticateValidatorTests
     [InlineData(" ")]
     public void Should_have_error_when_password_empty(string password)
     {
-        var request = new Authenticate.Request("sam", password);
+        var request = CreateRequestWithPassword(password);
 
         var result = _validator.TestValidate(request);
 
@@ -156,7 +158,7 @@ public class AuthenticateValidatorTests
     [Fact]
     public void Should_have_error_when_password_less_min_length()
     {
-        var request = new Authenticate.Request("sam", "Qwer12!");
+        var request = CreateRequestWithPassword("Qwer12!");
 
         var result = _validator.TestValidate(request);
 
@@ -167,11 +169,30 @@ public class AuthenticateValidatorTests
     [Fact]
     public void Should_have_error_when_password_greater_max_length()
     {
-        var request = new Authenticate.Request("sam", "Qwerty1234!" + new string('a', 512));
+        var request = CreateRequestWithPassword("Qwerty1234!" + new string('a', 512));
 
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Password)
             .WithErrorCode("auth:validation:password_must_be_less_or_equal_max_length");
     }
+
+    private Authenticate.Request CreateRequestWithLogin(string? login) =>
+        CreateRequestFaker()
+            .RuleFor(request => request.Login, login)
+            .Generate();
+
+    private Authenticate.Request CreateRequestWithPassword(string? password) =>
+        CreateRequestFaker()
+            .RuleFor(request => request.Password, password)
+            .Generate();
+
+    private Authenticate.Request CreateRequest(string? login = null, string? password = null) =>
+        CreateRequestFaker(login, password)
+            .Generate();
+
+    private static Faker<Authenticate.Request> CreateRequestFaker(string? login = null, string? password = null) =>
+        new AutoFaker<Authenticate.Request>()
+            .RuleFor(request => request.Login, faker => login ?? faker.Internet.UserName())
+            .RuleFor(request => request.Password, faker => password ?? faker.Internet.Password());
 }

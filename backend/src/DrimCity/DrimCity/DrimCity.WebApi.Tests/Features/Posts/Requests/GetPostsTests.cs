@@ -1,4 +1,5 @@
 using System.Net;
+using AutoBogus;
 using Common.Tests.Database.Harnesses;
 using Common.Tests.Http.Harnesses;
 using DrimCity.WebApi.Database;
@@ -213,15 +214,12 @@ public record GetPostsResponseContract(PostContract[] Posts, string? NextPageTok
 
 public class GetPostsRequestValidatorTests
 {
-    private const int AnyValidPageSize = 10;
-    private const GetPosts.PageToken? AnyValidPageToken = null;
-
     private readonly GetPosts.RequestValidator _requestValidator = new();
 
     [Fact]
     public void Should_not_have_errors_when_request_is_valid()
     {
-        var request = new GetPosts.Request(AnyValidPageSize, AnyValidPageToken);
+        var request = CreateRequest();
 
         var result = _requestValidator.TestValidate(request);
 
@@ -231,12 +229,16 @@ public class GetPostsRequestValidatorTests
     [Fact]
     public void Should_have_error_when_page_size_is_negative()
     {
-        //TODO: question: should we use AutoBogus faker for testing request validators?
-        var request = new GetPosts.Request(-1, AnyValidPageToken);
+        var request = CreateRequest(-1);
 
         var result = _requestValidator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.PageSize)
             .WithErrorCode("posts:validation:page_size_must_be_positive");
     }
+
+    private static GetPosts.Request CreateRequest(int? pageSize = null) =>
+        new AutoFaker<GetPosts.Request>()
+            .RuleFor(request => request.PageSize, faker => pageSize ?? faker.Random.Int(1))
+            .Generate();
 }
