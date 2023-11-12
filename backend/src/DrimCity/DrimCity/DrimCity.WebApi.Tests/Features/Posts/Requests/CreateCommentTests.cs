@@ -1,12 +1,13 @@
 using System.Net;
 using AutoBogus;
 using Common.Tests.Database.Harnesses;
-using Common.Tests.Http.Extensions;
 using DrimCity.WebApi.Database;
 using DrimCity.WebApi.Domain;
 using DrimCity.WebApi.Features.Posts.Requests;
+using DrimCity.WebApi.Tests.Extensions;
 using DrimCity.WebApi.Tests.Features.Posts.Contracts;
 using DrimCity.WebApi.Tests.Fixtures;
+using RestSharp;
 
 namespace DrimCity.WebApi.Tests.Features.Posts.Requests;
 
@@ -26,13 +27,10 @@ public class CreateCommentTests : IAsyncLifetime
 
     public Task DisposeAsync() => Task.CompletedTask;
 
-    private static async Task<(CommentContract? responseComment, HttpResponseMessage httpResponse)> Act(
-        HttpClient httpClient, string postSlug, CreateCommentRequestContract request)
-    {
-        var (responseComment, httpResponse) = await httpClient.PostTyped<CommentContract>(
+    private static async Task<RestResponse<CommentContract>> Act(
+        HttpClient httpClient, string postSlug, CreateCommentRequestContract request) =>
+        await new RestClient(httpClient).ExecutePostAsync<CommentContract>(
             $"/posts/{postSlug}/comments", request, CreateCancellationToken());
-        return (responseComment, httpResponse);
-    }
 
     [Fact]
     public async Task Should_create_comment()
@@ -44,12 +42,13 @@ public class CreateCommentTests : IAsyncLifetime
 
         var request = AutoFaker.Generate<CreateCommentRequestContract>();
 
-        var (responseComment, httpResponse) = await Act(httpClient, post.Slug, request);
+        var restResponse = await Act(httpClient, post.Slug, request);
 
-        httpResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        responseComment.Should().NotBeNull();
+        restResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var responseComment = restResponse.Data;
+        responseComment.ShouldNotBeNull();
 
-        httpResponse.Headers.Location.Should().Be($"/posts/{post.Slug}/comments/{responseComment!.Id}");
+        restResponse.Headers.Location().Should().Be($"/posts/{post.Slug}/comments/{responseComment.Id}");
 
         responseComment.Id.Should().BeGreaterOrEqualTo(1);
         responseComment.Content.Should().Be(request.Content);
@@ -59,9 +58,9 @@ public class CreateCommentTests : IAsyncLifetime
         var dbComment = await _database.SingleOrDefault<Comment>(c => c.Id == responseComment.Id,
             CreateCancellationToken());
 
-        dbComment.Should().NotBeNull();
-        dbComment!.Should().BeEquivalentTo(responseComment);
-        dbComment!.PostId.Should().Be(post.Id);
+        dbComment.ShouldNotBeNull();
+        dbComment.Should().BeEquivalentTo(responseComment);
+        dbComment.PostId.Should().Be(post.Id);
     }
 
     [Fact]
@@ -73,9 +72,10 @@ public class CreateCommentTests : IAsyncLifetime
 
         var request = AutoFaker.Generate<CreateCommentRequestContract>();
 
-        var (responseComment, httpResponse) = await Act(httpClient, postSlug, request);
+        var restResponse = await Act(httpClient, postSlug, request);
 
-        httpResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        restResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var responseComment = restResponse.Data;
         responseComment.Should().BeNull();
     }
 
@@ -86,9 +86,9 @@ public class CreateCommentTests : IAsyncLifetime
 
         var (httpClient, _) = await _fixture.CreateWronglyAuthedHttpClient();
 
-        var (_, httpResponse) = await Act(httpClient, "slug", request);
+        var restResponse = await Act(httpClient, "slug", request);
 
-        httpResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        restResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }
 

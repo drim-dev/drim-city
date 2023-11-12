@@ -1,13 +1,14 @@
 using System.Net;
 using Common.Tests.Database.Harnesses;
-using Common.Tests.Http.Extensions;
 using Common.Tests.Http.Harnesses;
 using DrimCity.WebApi.Database;
 using DrimCity.WebApi.Features.Auth.Requests;
 using DrimCity.WebApi.Features.Auth.Services;
+using DrimCity.WebApi.Tests.Extensions;
 using DrimCity.WebApi.Tests.Features.Auth.Contracts;
 using DrimCity.WebApi.Tests.Fixtures;
 using Microsoft.Extensions.DependencyInjection;
+using RestSharp;
 
 namespace DrimCity.WebApi.Tests.Features.Auth.Requests;
 
@@ -36,10 +37,10 @@ public class AuthenticateTests : IAsyncLifetime
 
     public async Task DisposeAsync() => await _scope.DisposeAsync();
 
-    private async Task<(TokenContract?, HttpResponseMessage)> Act(AuthenticateRequestContract request)
+    private async Task<RestResponse<TokenContract>> Act(AuthenticateRequestContract request)
     {
-        var client = _httpClient.CreateClient();
-        return await client.PostTyped<TokenContract>("/auth", request, CreateCancellationToken());
+        var client = new RestClient(_httpClient.CreateClient());
+        return await client.ExecutePostAsync<TokenContract>("/auth", request, CreateCancellationToken());
     }
 
     [Fact]
@@ -50,11 +51,12 @@ public class AuthenticateTests : IAsyncLifetime
         var account = CreateAccount(passwordHash: _passwordHasher!.Hash(password));
         await _database.Save(account);
 
-        var (token, httpResponse) = await Act(new AuthenticateRequestContract(account.Login, password));
+        var httpResponse = await Act(new AuthenticateRequestContract(account.Login, password));
 
         httpResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // JWT generation is tested in JwtGeneratorTests
+        var token = httpResponse.Data;
         token.Should().NotBeNull();
     }
 
@@ -66,9 +68,9 @@ public class AuthenticateTests : IAsyncLifetime
         var account = CreateAccount(passwordHash: _passwordHasher!.Hash(password));
         await _database.Save(account);
 
-        var (_, httpResponse) = await Act(new AuthenticateRequestContract(account.Login + "1", password));
+        var restResponse = await Act(new AuthenticateRequestContract(account.Login + "1", password));
 
-        httpResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        restResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
@@ -79,9 +81,9 @@ public class AuthenticateTests : IAsyncLifetime
         var account = CreateAccount(passwordHash: _passwordHasher!.Hash(password));
         await _fixture.Database.Save(account);
 
-        var (_, httpResponse) = await Act(new AuthenticateRequestContract(account.Login, password + "1"));
+        var restResponse = await Act(new AuthenticateRequestContract(account.Login, password + "1"));
 
-        httpResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        restResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }
 

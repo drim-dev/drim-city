@@ -5,6 +5,7 @@ namespace Common.Tests.Http.Extensions;
 
 public static class HttpClientExtensions
 {
+    //TODO: question: should we delete this class if we use RestSharp?
     public static async Task<(TResponse?, HttpResponseMessage httpResponse)> PostTyped<TResponse>(
         this HttpClient client, string url, object? body, CancellationToken cancellationToken)
     {

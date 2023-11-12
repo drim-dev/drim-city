@@ -174,7 +174,6 @@ public class GetPostsTests : IAsyncLifetime
             request.AddQueryParameter("pageToken", pageToken);
         }
 
-        //TODO: question: what is about to use RestSharp library? It provides ease way to build requests and ease access to response status, object, raw content, etc.
         var httpClient = _httpClient.CreateClient();
         var restClient = new RestClient(httpClient);
         return await restClient.ExecuteAsync<TResponse>(request, CreateCancellationToken());

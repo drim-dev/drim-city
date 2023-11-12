@@ -1,9 +1,11 @@
 using System.Net;
-using Common.Tests.Http.Extensions;
 using DrimCity.WebApi.Domain;
 using DrimCity.WebApi.Features.Auth.Requests;
+using DrimCity.WebApi.Tests.Common.Contracts;
+using DrimCity.WebApi.Tests.Extensions;
 using DrimCity.WebApi.Tests.Features.Auth.Contracts;
 using DrimCity.WebApi.Tests.Fixtures;
+using RestSharp;
 
 namespace DrimCity.WebApi.Tests.Features.Auth.Requests;
 
@@ -18,10 +20,10 @@ public class CreateAccountTests : IAsyncLifetime
 
     public Task DisposeAsync() => Task.CompletedTask;
 
-    private async Task<(AccountContract?, HttpResponseMessage)> Act(CreateAccountRequestContract request)
+    private async Task<RestResponse<T>> Act<T>(CreateAccountRequestContract request)
     {
-        var client = _fixture.HttpClient.CreateClient();
-        return await client.PostTyped<AccountContract>("/auth/accounts", request, CreateCancellationToken());
+        var client = new RestClient(_fixture.HttpClient.CreateClient());
+        return await client.ExecutePostAsync<T>("/auth/accounts", request, CreateCancellationToken());
     }
 
     [Fact]
@@ -31,12 +33,13 @@ public class CreateAccountTests : IAsyncLifetime
 
         var request = new CreateAccountRequestContract(login, "Qwer1234!");
 
-        var (responseAccount, httpResponse) = await Act(request);
+        var restResponse = await Act<AccountContract>(request);
 
-        httpResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        responseAccount.Should().NotBeNull();
+        restResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var responseAccount = restResponse.Data;
+        responseAccount.ShouldNotBeNull();
 
-        httpResponse.Headers.Location.Should().Be($"/auth/accounts/{responseAccount!.Login}");
+        restResponse.Headers.Location().Should().Be($"/auth/accounts/{responseAccount.Login}");
 
         responseAccount.Login.Should().Be(login.ToLower());
         responseAccount.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, 1.Seconds());
@@ -44,8 +47,8 @@ public class CreateAccountTests : IAsyncLifetime
         var dbAccount = await _fixture.Database.SingleOrDefault<Account>(x => x.Login == responseAccount.Login,
             CreateCancellationToken());
 
-        dbAccount.Should().NotBeNull();
-        dbAccount!.Id.Should().BeGreaterOrEqualTo(0);
+        dbAccount.ShouldNotBeNull();
+        dbAccount.Id.Should().BeGreaterOrEqualTo(0);
         dbAccount.Login.Should().Be(login.ToLower());
         dbAccount.CreatedAt.Should().BeCloseTo(responseAccount.CreatedAt, 100.Microseconds());
         dbAccount.PasswordHash.Should().NotBeEmpty();
@@ -63,9 +66,9 @@ public class CreateAccountTests : IAsyncLifetime
 
         var request = new CreateAccountRequestContract(login, "Qwer1234!");
 
-        var (_, httpResponse) = await Act(request);
+        var restResponse = await Act<ProblemDetailsContract>(request);
 
-        await httpResponse.ShouldBeLogicConflictError("Account already exists", "auth:logic:account_already_exists");
+        restResponse.ShouldBeLogicConflictError("Account already exists", "auth:logic:account_already_exists");
     }
 }
 

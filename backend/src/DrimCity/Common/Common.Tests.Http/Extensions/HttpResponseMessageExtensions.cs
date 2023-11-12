@@ -8,6 +8,7 @@ namespace Common.Tests.Http.Extensions;
 
 public static class HttpResponseMessageExtensions
 {
+    //TODO: question: should we delete this class if we use RestSharp?
     public static async Task ShouldBeLogicConflictError(this HttpResponseMessage response, string message, string code)
     {
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
