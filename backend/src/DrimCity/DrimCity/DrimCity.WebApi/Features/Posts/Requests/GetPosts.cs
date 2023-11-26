@@ -17,27 +17,27 @@ public static class GetPosts
     {
         public void MapEndpoint(WebApplication app)
         {
-            app.MapGet("/posts", async Task<Ok<BodyResponse>>
-                (IMediator mediator, [AsParameters] QueryRequest queryRequest, CancellationToken cancellationToken) =>
+            app.MapGet("/posts", async Task<Ok<ResponseBody>>
+                (IMediator mediator, [AsParameters] RequestQuery requestQuery, CancellationToken cancellationToken) =>
             {
-                var request = CreateRequest(queryRequest, cancellationToken);
+                var request = CreateRequest(requestQuery, cancellationToken);
 
                 var response = await mediator.Send(request, cancellationToken);
 
-                var bodyResponse = CreateResponse(response, cancellationToken);
+                var responseBody = CreateResponseBody(response, cancellationToken);
 
-                return TypedResults.Ok(bodyResponse);
+                return TypedResults.Ok(responseBody);
             });
         }
 
-        private static Request CreateRequest(QueryRequest queryRequest, CancellationToken cancellationToken)
+        private static Request CreateRequest(RequestQuery requestQuery, CancellationToken cancellationToken)
         {
-            var pageToken = DeserializePageToken(queryRequest.PageToken, cancellationToken);
-            var pageSize = queryRequest.PageSize switch
+            var pageToken = DeserializePageToken(requestQuery.PageToken, cancellationToken);
+            var pageSize = requestQuery.PageSize switch
             {
                 null or 0 => Request.DefaultPageSize,
                 > 1000 => Request.MaximumPageSize,
-                _ => queryRequest.PageSize.Value,
+                _ => requestQuery.PageSize.Value,
             };
 
             return new Request(pageSize, pageToken);
@@ -51,17 +51,16 @@ public static class GetPosts
             }
 
             var pageTokenAsBytes = Convert.FromBase64String(pageTokenAsString);
-            var pageToken =
-                MessagePackSerializer.Deserialize<PageToken>(pageTokenAsBytes.AsMemory(), null, cancellationToken);
+            var pageTokenAsMemory = pageTokenAsBytes.AsMemory();
+            var pageToken = MessagePackSerializer.Deserialize<PageToken>(pageTokenAsMemory, null, cancellationToken);
 
             return pageToken;
         }
 
-        private static BodyResponse CreateResponse(Response response, CancellationToken cancellationToken)
+        private static ResponseBody CreateResponseBody(Response response, CancellationToken cancellationToken)
         {
             var nextPageTokenAsString = SerializePageToken(response.NextPageToken, cancellationToken);
-            var bodyResponse = new BodyResponse(response.Posts, nextPageTokenAsString);
-            return bodyResponse;
+            return new ResponseBody(response.Posts, nextPageTokenAsString);
         }
 
         private static string? SerializePageToken(PageToken? pageToken, CancellationToken cancellationToken)
@@ -76,16 +75,18 @@ public static class GetPosts
 
             return pageTokenAsString;
         }
-    }
 
-    public record QueryRequest(int? PageSize, string? PageToken)
-    {
-        /// <summary>
-        ///     The maximum number of posts to return.
-        ///     If unspecified or specified as 0, 10 posts will be returned.
-        ///     The maximum value is 1000; values above 1000 will be coerced to 1000.
-        /// </summary>
-        public int? PageSize { get; init; } = PageSize;
+        private record RequestQuery(int? PageSize, string? PageToken)
+        {
+            /// <summary>
+            ///     The maximum number of posts to return.
+            ///     If unspecified or specified as 0, 10 posts will be returned.
+            ///     The maximum value is 1000; values above 1000 will be coerced to 1000.
+            /// </summary>
+            public int? PageSize { get; } = PageSize;
+        }
+
+        private record ResponseBody(PostModel[] Posts, string? NextPageToken);
     }
 
     public record Request(int PageSize, PageToken? PageToken) : IRequest<Response>
@@ -95,8 +96,6 @@ public static class GetPosts
     }
 
     public record Response(PostModel[] Posts, PageToken? NextPageToken);
-
-    public record BodyResponse(PostModel[] Posts, string? NextPageToken);
 
     [MessagePackObject]
     public record PageToken([property: Key(0)] int Skip);

@@ -15,8 +15,8 @@ namespace DrimCity.WebApi.Tests.Features.Posts.Requests;
 [Collection(PostsTestsCollection.Name)]
 public class CreateCommentTests : IAsyncLifetime
 {
-    private readonly TestFixture _fixture;
     private readonly DatabaseHarness<Program, AppDbContext> _database;
+    private readonly TestFixture _fixture;
 
     public CreateCommentTests(TestFixture fixture)
     {
@@ -102,7 +102,6 @@ public class CreateCommentValidatorTests
     [Fact]
     public void Should_not_have_errors_when_request_is_valid()
     {
-        //TODO: question: If we use AutoFaker then values for a valid request are implicit. Is it ok? Also, values are random and tests can fail randomly.
         var request = CreateRequest();
 
         var result = _validator.TestValidate(request);

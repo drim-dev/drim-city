@@ -12,6 +12,6 @@ public static class PostsValidationErrors
 
     public const string CommentContentMustNotBeEmpty = Prefix + "comment_content_must_not_be_empty";
 
-    public const string CommentContentMustBeLessOrEqualMaxLength =
-        Prefix + "comment_content_must_be_less_or_equal_max_length";
+    public const string CommentContentMustBeLessOrEqualMaxLength = Prefix +
+                                                                   "comment_content_must_be_less_or_equal_max_length";
 }

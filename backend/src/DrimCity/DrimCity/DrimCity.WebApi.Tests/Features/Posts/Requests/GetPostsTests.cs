@@ -32,6 +32,31 @@ public class GetPostsTests : IAsyncLifetime
     public Task DisposeAsync() =>
         Task.CompletedTask;
 
+    private async Task<RestResponse<ProblemDetailsContract?>> ActWithProblem(string? pageSize = null) =>
+        await ExecuteRequest<ProblemDetailsContract?>(pageSize);
+
+    private async Task<RestResponse<GetPostsResponseContract>> Act(int? pageSize = null, string? pageToken = null) =>
+        await ExecuteRequest<GetPostsResponseContract>(pageSize?.ToString(), pageToken);
+
+    private async Task<RestResponse<TResponse>> ExecuteRequest<TResponse>(string? pageSize, string? pageToken = null)
+    {
+        var request = new RestRequest("/posts");
+        if (pageSize is not null)
+        {
+            request.AddQueryParameter("pageSize", pageSize);
+        }
+
+        if (pageToken is not null)
+        {
+            request.AddQueryParameter("pageToken", pageToken);
+        }
+
+        var httpClient = _httpClient.CreateClient();
+        var restClient = new RestClient(httpClient);
+
+        return await restClient.ExecuteAsync<TResponse>(request, CreateCancellationToken());
+    }
+
     [Fact]
     public async Task Should_return_posts()
     {
@@ -153,31 +178,6 @@ public class GetPostsTests : IAsyncLifetime
 
         var expectedMaximumCount = 1000;
         responsePosts.Should().HaveCount(expectedMaximumCount);
-    }
-
-    private async Task<RestResponse<ProblemDetailsContract?>> ActWithProblem(string? pageSize = null) =>
-        await ExecuteRequest<ProblemDetailsContract?>(pageSize);
-
-    private async Task<RestResponse<GetPostsResponseContract>> Act(int? pageSize = null,
-        string? pageToken = null) =>
-        await ExecuteRequest<GetPostsResponseContract>(pageSize?.ToString(), pageToken);
-
-    private async Task<RestResponse<TResponse>> ExecuteRequest<TResponse>(string? pageSize, string? pageToken = null)
-    {
-        var request = new RestRequest("/posts");
-        if (pageSize is not null)
-        {
-            request.AddQueryParameter("pageSize", pageSize);
-        }
-
-        if (pageToken is not null)
-        {
-            request.AddQueryParameter("pageToken", pageToken);
-        }
-
-        var httpClient = _httpClient.CreateClient();
-        var restClient = new RestClient(httpClient);
-        return await restClient.ExecuteAsync<TResponse>(request, CreateCancellationToken());
     }
 
     private async Task<Post> CreatePost(string? content = null, DateTime? createdAt = null)
