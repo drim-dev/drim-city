@@ -229,7 +229,7 @@ public class GetPostsRequestValidatorTests
     [Fact]
     public void Should_have_error_when_page_size_is_negative()
     {
-        var request = CreateRequest(-1);
+        var request = CreateRequest() with { PageSize = -1 };
 
         var result = _requestValidator.TestValidate(request);
 
@@ -237,8 +237,8 @@ public class GetPostsRequestValidatorTests
             .WithErrorCode("posts:validation:page_size_must_be_positive");
     }
 
-    private static GetPosts.Request CreateRequest(int? pageSize = null) =>
+    private static GetPosts.Request CreateRequest() =>
         new AutoFaker<GetPosts.Request>()
-            .RuleFor(request => request.PageSize, faker => pageSize ?? faker.Random.Int(1))
+            .RuleFor(request => request.PageSize, faker => faker.Random.Int(1))
             .Generate();
 }

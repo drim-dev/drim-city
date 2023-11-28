@@ -1,6 +1,5 @@
 ﻿using System.Net;
 using AutoBogus;
-using Bogus;
 using DrimCity.WebApi.Domain;
 using DrimCity.WebApi.Features.Posts.Requests;
 using DrimCity.WebApi.Tests.Extensions;
@@ -94,7 +93,7 @@ public class CreatePostValidatorTests
     [InlineData(" ")]
     public void Should_have_error_when_title_empty(string title)
     {
-        var request = CreateRequestWithTitle(title);
+        var request = CreateRequest() with { Title = title };
 
         var result = _validator.TestValidate(request);
 
@@ -105,7 +104,7 @@ public class CreatePostValidatorTests
     [Fact]
     public void Should_have_error_when_title_greater_max_length()
     {
-        var request = CreateRequestWithTitle(new string('a', 301));
+        var request = CreateRequest() with { Title = new string('a', 301) };
 
         var result = _validator.TestValidate(request);
 
@@ -119,7 +118,7 @@ public class CreatePostValidatorTests
     [InlineData(" ")]
     public void Should_have_error_when_content_empty(string content)
     {
-        var request = CreateRequestWithContent(content);
+        var request = CreateRequest() with { Content = content };
 
         var result = _validator.TestValidate(request);
 
@@ -130,7 +129,7 @@ public class CreatePostValidatorTests
     [Fact]
     public void Should_have_error_when_content_greater_max_length()
     {
-        var request = CreateRequestWithContent(new string('a', 100_001));
+        var request = CreateRequest() with { Content = new string('a', 100_001) };
 
         var result = _validator.TestValidate(request);
 
@@ -138,22 +137,9 @@ public class CreatePostValidatorTests
             .WithErrorCode("posts:validation:content_must_be_less_or_equal_max_length");
     }
 
-    private CreatePost.Request CreateRequestWithTitle(string? title) =>
-        CreateRequestFaker()
-            .RuleFor(request => request.Title, title)
-            .Generate();
-
-    private CreatePost.Request CreateRequestWithContent(string? content) =>
-        CreateRequestFaker()
-            .RuleFor(request => request.Content, content)
-            .Generate();
-
-    private CreatePost.Request CreateRequest(string? title = null, string? content = null) =>
-        CreateRequestFaker(title, content)
-            .Generate();
-
-    private static Faker<CreatePost.Request> CreateRequestFaker(string? title = null, string? content = null) =>
+    private static CreatePost.Request CreateRequest() =>
         new AutoFaker<CreatePost.Request>()
-            .RuleFor(request => request.Title, faker => title ?? faker.Random.Word())
-            .RuleFor(request => request.Content, faker => content ?? faker.Random.Words());
+            .RuleFor(request => request.Title, faker => faker.Random.Word())
+            .RuleFor(request => request.Content, faker => faker.Random.Words())
+            .Generate();
 }

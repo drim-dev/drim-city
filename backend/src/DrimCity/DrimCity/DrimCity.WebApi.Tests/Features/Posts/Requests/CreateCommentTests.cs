@@ -1,6 +1,5 @@
 using System.Net;
 using AutoBogus;
-using Bogus;
 using Common.Tests.Database.Harnesses;
 using DrimCity.WebApi.Database;
 using DrimCity.WebApi.Domain;
@@ -115,7 +114,7 @@ public class CreateCommentValidatorTests
     [InlineData(" ")]
     public void Should_have_error_when_content_empty(string content)
     {
-        var request = CreateRequest(content);
+        var request = CreateRequest() with { Content = content };
 
         var result = _validator.TestValidate(request);
 
@@ -127,7 +126,7 @@ public class CreateCommentValidatorTests
     [Fact]
     public void Should_have_error_when_content_greater_max_length()
     {
-        var request = CreateRequest(new string('a', 10_001));
+        var request = CreateRequest() with { Content = new string('a', 10_001) };
 
         var result = _validator.TestValidate(request);
 
@@ -136,16 +135,8 @@ public class CreateCommentValidatorTests
             .WithErrorCode("posts:validation:comment_content_must_be_less_or_equal_max_length");
     }
 
-    private CreateComment.Request CreateRequest(string? content) =>
-        CreateRequestFaker()
-            .RuleFor(request => request.Content, content)
-            .Generate();
-
-    private CreateComment.Request CreateRequest() =>
-        CreateRequestFaker()
-            .Generate();
-
-    private static Faker<CreateComment.Request> CreateRequestFaker() =>
+    private static CreateComment.Request CreateRequest() =>
         new AutoFaker<CreateComment.Request>()
-            .RuleFor(request => request.Content, faker => faker.Random.Words());
+            .RuleFor(request => request.Content, faker => faker.Random.Words())
+            .Generate();
 }
