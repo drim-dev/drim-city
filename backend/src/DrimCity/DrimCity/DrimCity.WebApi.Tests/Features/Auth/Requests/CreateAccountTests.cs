@@ -1,9 +1,12 @@
 using System.Net;
-using Common.Tests.Http.Extensions;
+using AutoBogus;
 using DrimCity.WebApi.Domain;
 using DrimCity.WebApi.Features.Auth.Requests;
+using DrimCity.WebApi.Tests.Common.Contracts;
+using DrimCity.WebApi.Tests.Extensions;
 using DrimCity.WebApi.Tests.Features.Auth.Contracts;
 using DrimCity.WebApi.Tests.Fixtures;
+using RestSharp;
 
 namespace DrimCity.WebApi.Tests.Features.Auth.Requests;
 
@@ -18,10 +21,10 @@ public class CreateAccountTests : IAsyncLifetime
 
     public Task DisposeAsync() => Task.CompletedTask;
 
-    private async Task<(AccountContract?, HttpResponseMessage)> Act(CreateAccountRequestContract request)
+    private async Task<RestResponse<T>> Act<T>(CreateAccountRequestContract request)
     {
-        var client = _fixture.HttpClient.CreateClient();
-        return await client.PostTyped<AccountContract>("/auth/accounts", request, CreateCancellationToken());
+        var client = new RestClient(_fixture.HttpClient.CreateClient());
+        return await client.ExecutePostAsync<T>("/auth/accounts", request, CreateCancellationToken());
     }
 
     [Fact]
@@ -31,12 +34,13 @@ public class CreateAccountTests : IAsyncLifetime
 
         var request = new CreateAccountRequestContract(login, "Qwer1234!");
 
-        var (responseAccount, httpResponse) = await Act(request);
+        var restResponse = await Act<AccountContract>(request);
 
-        httpResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        responseAccount.Should().NotBeNull();
+        restResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var responseAccount = restResponse.Data;
+        responseAccount.ShouldNotBeNull();
 
-        httpResponse.Headers.Location.Should().Be($"/auth/accounts/{responseAccount!.Login}");
+        restResponse.Headers.Location().Should().Be($"/auth/accounts/{responseAccount.Login}");
 
         responseAccount.Login.Should().Be(login.ToLower());
         responseAccount.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, 1.Seconds());
@@ -44,8 +48,8 @@ public class CreateAccountTests : IAsyncLifetime
         var dbAccount = await _fixture.Database.SingleOrDefault<Account>(x => x.Login == responseAccount.Login,
             CreateCancellationToken());
 
-        dbAccount.Should().NotBeNull();
-        dbAccount!.Id.Should().BeGreaterOrEqualTo(0);
+        dbAccount.ShouldNotBeNull();
+        dbAccount.Id.Should().BeGreaterOrEqualTo(0);
         dbAccount.Login.Should().Be(login.ToLower());
         dbAccount.CreatedAt.Should().BeCloseTo(responseAccount.CreatedAt, 100.Microseconds());
         dbAccount.PasswordHash.Should().NotBeEmpty();
@@ -63,9 +67,9 @@ public class CreateAccountTests : IAsyncLifetime
 
         var request = new CreateAccountRequestContract(login, "Qwer1234!");
 
-        var (_, httpResponse) = await Act(request);
+        var restResponse = await Act<ProblemDetailsContract>(request);
 
-        await httpResponse.ShouldBeLogicConflictError("Account already exists", "auth:logic:account_already_exists");
+        restResponse.ShouldBeLogicConflictError("Account already exists", "auth:logic:account_already_exists");
     }
 }
 
@@ -78,7 +82,7 @@ public class CreateAccountValidatorTests
     [Fact]
     public void Should_not_have_errors_when_request_is_valid()
     {
-        var request = new CreateAccount.Request("sam", "Qwerty1234!");
+        var request = CreateRequest("sam", "Qwerty1234!");
 
         var result = _validator.TestValidate(request);
 
@@ -91,7 +95,7 @@ public class CreateAccountValidatorTests
     [InlineData(" ")]
     public void Should_have_error_when_login_empty(string login)
     {
-        var request = new CreateAccount.Request(login, "Qwerty1234!");
+        var request = CreateRequest() with { Login = login };
 
         var result = _validator.TestValidate(request);
 
@@ -102,7 +106,7 @@ public class CreateAccountValidatorTests
     [Fact]
     public void Should_have_error_when_login_less_min_length()
     {
-        var request = new CreateAccount.Request("sa", "Qwerty1234!");
+        var request = CreateRequest() with { Login = "sa" };
 
         var result = _validator.TestValidate(request);
 
@@ -113,7 +117,7 @@ public class CreateAccountValidatorTests
     [Fact]
     public void Should_have_error_when_login_greater_max_length()
     {
-        var request = new CreateAccount.Request(new string('a', 33), "Qwerty1234!");
+        var request = CreateRequest() with { Login = new string('a', 33) };
 
         var result = _validator.TestValidate(request);
 
@@ -128,7 +132,7 @@ public class CreateAccountValidatorTests
     [InlineData("%")]
     public void Should_have_error_when_login_contains_forbidden_symbols(string symbol)
     {
-        var request = new CreateAccount.Request("sam" + symbol, "Qwerty1234!");
+        var request = CreateRequest() with { Login = "sam" + symbol };
 
         var result = _validator.TestValidate(request);
 
@@ -142,7 +146,7 @@ public class CreateAccountValidatorTests
     [InlineData(" ")]
     public void Should_have_error_when_password_empty(string password)
     {
-        var request = new CreateAccount.Request("sam", password);
+        var request = CreateRequest() with { Password = password };
 
         var result = _validator.TestValidate(request);
 
@@ -153,7 +157,7 @@ public class CreateAccountValidatorTests
     [Fact]
     public void Should_have_error_when_password_less_min_length()
     {
-        var request = new CreateAccount.Request("sam", "Qwer12!");
+        var request = CreateRequest() with { Password = "Qwer12!" };
 
         var result = _validator.TestValidate(request);
 
@@ -164,7 +168,7 @@ public class CreateAccountValidatorTests
     [Fact]
     public void Should_have_error_when_password_greater_max_length()
     {
-        var request = new CreateAccount.Request("sam", "Qwerty1234!" + new string('a', 512));
+        var request = CreateRequest() with { Password = "Qwerty1234!" + new string('a', 512) };
 
         var result = _validator.TestValidate(request);
 
@@ -175,7 +179,7 @@ public class CreateAccountValidatorTests
     [Fact]
     public void Should_have_error_when_password_not_contains_uppercase_letter()
     {
-        var request = new CreateAccount.Request("sam", "qwerty1234!");
+        var request = CreateRequest() with { Password = "qwerty1234!" };
 
         var result = _validator.TestValidate(request);
 
@@ -186,7 +190,7 @@ public class CreateAccountValidatorTests
     [Fact]
     public void Should_have_error_when_password_not_contains_lowercase_letter()
     {
-        var request = new CreateAccount.Request("sam", "QWERTY1234!");
+        var request = CreateRequest() with { Password = "QWERTY1234!" };
 
         var result = _validator.TestValidate(request);
 
@@ -197,7 +201,7 @@ public class CreateAccountValidatorTests
     [Fact]
     public void Should_have_error_when_password_not_contains_number()
     {
-        var request = new CreateAccount.Request("sam", "QWERTYqwer!");
+        var request = CreateRequest() with { Password = "QWERTYqwer!" };
 
         var result = _validator.TestValidate(request);
 
@@ -208,11 +212,17 @@ public class CreateAccountValidatorTests
     [Fact]
     public void Should_have_error_when_password_not_contains_special_symbol()
     {
-        var request = new CreateAccount.Request("sam", "QWERTYqwer4");
+        var request = CreateRequest() with { Password = "QWERTYqwer4" };
 
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Password)
             .WithErrorCode("auth:validation:password_must_contain_special_symbol");
     }
+
+    private static CreateAccount.Request CreateRequest(string? login = null, string? password = null) =>
+        new AutoFaker<CreateAccount.Request>()
+            .RuleFor(request => request.Login, faker => login ?? faker.Internet.UserName())
+            .RuleFor(request => request.Password, faker => password ?? faker.Internet.Password())
+            .Generate();
 }

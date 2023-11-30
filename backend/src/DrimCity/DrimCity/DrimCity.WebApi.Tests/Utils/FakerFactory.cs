@@ -13,13 +13,14 @@ public static class FakerFactory
             .RuleFor(a => a.PasswordHash, f => passwordHash ?? f.Random.AlphaNumeric(12))
             .Generate();
 
-    public static Post CreatePost(int authorId) =>
+    public static Post CreatePost(int authorId, string? content = null, DateTime? createdAt = null) =>
         new AutoFaker<Post>()
             .RuleFor(p => p.Id, 0)
-            .RuleFor(p => p.CreatedAt, DateTime.UtcNow)
+            .RuleFor(p => p.CreatedAt, createdAt ?? DateTime.UtcNow)
             .RuleFor(p => p.AuthorId, authorId)
             .Ignore(p => p.Author)
-            .RuleFor(p => p.Slug, f => f.Random.AlphaNumeric(16))
+            .RuleFor(p => p.Slug, faker => faker.Random.AlphaNumeric(16))
+            .RuleFor(p => p.Content, faker => content ?? faker.Random.Words())
             .Generate();
 
     public static Comment CreateComment(int authorId, int postId, DateTime? createdAt) =>

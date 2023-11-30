@@ -1,13 +1,15 @@
 using System.Net;
+using AutoBogus;
 using Common.Tests.Database.Harnesses;
-using Common.Tests.Http.Extensions;
 using Common.Tests.Http.Harnesses;
 using DrimCity.WebApi.Database;
 using DrimCity.WebApi.Features.Auth.Requests;
 using DrimCity.WebApi.Features.Auth.Services;
+using DrimCity.WebApi.Tests.Extensions;
 using DrimCity.WebApi.Tests.Features.Auth.Contracts;
 using DrimCity.WebApi.Tests.Fixtures;
 using Microsoft.Extensions.DependencyInjection;
+using RestSharp;
 
 namespace DrimCity.WebApi.Tests.Features.Auth.Requests;
 
@@ -36,10 +38,10 @@ public class AuthenticateTests : IAsyncLifetime
 
     public async Task DisposeAsync() => await _scope.DisposeAsync();
 
-    private async Task<(TokenContract?, HttpResponseMessage)> Act(AuthenticateRequestContract request)
+    private async Task<RestResponse<TokenContract>> Act(AuthenticateRequestContract request)
     {
-        var client = _httpClient.CreateClient();
-        return await client.PostTyped<TokenContract>("/auth", request, CreateCancellationToken());
+        var client = new RestClient(_httpClient.CreateClient());
+        return await client.ExecutePostAsync<TokenContract>("/auth", request, CreateCancellationToken());
     }
 
     [Fact]
@@ -50,11 +52,12 @@ public class AuthenticateTests : IAsyncLifetime
         var account = CreateAccount(passwordHash: _passwordHasher!.Hash(password));
         await _database.Save(account);
 
-        var (token, httpResponse) = await Act(new AuthenticateRequestContract(account.Login, password));
+        var httpResponse = await Act(new AuthenticateRequestContract(account.Login, password));
 
         httpResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // JWT generation is tested in JwtGeneratorTests
+        var token = httpResponse.Data;
         token.Should().NotBeNull();
     }
 
@@ -66,9 +69,9 @@ public class AuthenticateTests : IAsyncLifetime
         var account = CreateAccount(passwordHash: _passwordHasher!.Hash(password));
         await _database.Save(account);
 
-        var (_, httpResponse) = await Act(new AuthenticateRequestContract(account.Login + "1", password));
+        var restResponse = await Act(new AuthenticateRequestContract(account.Login + "1", password));
 
-        httpResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        restResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
@@ -79,9 +82,9 @@ public class AuthenticateTests : IAsyncLifetime
         var account = CreateAccount(passwordHash: _passwordHasher!.Hash(password));
         await _fixture.Database.Save(account);
 
-        var (_, httpResponse) = await Act(new AuthenticateRequestContract(account.Login, password + "1"));
+        var restResponse = await Act(new AuthenticateRequestContract(account.Login, password + "1"));
 
-        httpResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        restResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }
 
@@ -94,7 +97,7 @@ public class AuthenticateValidatorTests
     [Fact]
     public void Should_not_have_errors_when_request_is_valid()
     {
-        var request = new Authenticate.Request("sam", "Qwerty1234!");
+        var request = CreateRequest("sam", "Qwerty1234!");
 
         var result = _validator.TestValidate(request);
 
@@ -107,7 +110,7 @@ public class AuthenticateValidatorTests
     [InlineData(" ")]
     public void Should_have_error_when_login_empty(string login)
     {
-        var request = new Authenticate.Request(login, "Qwerty1234!");
+        var request = CreateRequest() with { Login = login };
 
         var result = _validator.TestValidate(request);
 
@@ -118,7 +121,7 @@ public class AuthenticateValidatorTests
     [Fact]
     public void Should_have_error_when_login_less_min_length()
     {
-        var request = new Authenticate.Request("sa", "Qwerty1234!");
+        var request = CreateRequest() with { Login = "sa" };
 
         var result = _validator.TestValidate(request);
 
@@ -129,7 +132,7 @@ public class AuthenticateValidatorTests
     [Fact]
     public void Should_have_error_when_login_greater_max_length()
     {
-        var request = new Authenticate.Request(new string('a', 33), "Qwerty1234!");
+        var request = CreateRequest() with { Login = new string('a', 33) };
 
         var result = _validator.TestValidate(request);
 
@@ -143,7 +146,7 @@ public class AuthenticateValidatorTests
     [InlineData(" ")]
     public void Should_have_error_when_password_empty(string password)
     {
-        var request = new Authenticate.Request("sam", password);
+        var request = CreateRequest() with { Password = password };
 
         var result = _validator.TestValidate(request);
 
@@ -154,7 +157,7 @@ public class AuthenticateValidatorTests
     [Fact]
     public void Should_have_error_when_password_less_min_length()
     {
-        var request = new Authenticate.Request("sam", "Qwer12!");
+        var request = CreateRequest() with { Password = "Qwer12!" };
 
         var result = _validator.TestValidate(request);
 
@@ -165,11 +168,17 @@ public class AuthenticateValidatorTests
     [Fact]
     public void Should_have_error_when_password_greater_max_length()
     {
-        var request = new Authenticate.Request("sam", "Qwerty1234!" + new string('a', 512));
+        var request = CreateRequest() with { Password = "Qwerty1234!" + new string('a', 512) };
 
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Password)
             .WithErrorCode("auth:validation:password_must_be_less_or_equal_max_length");
     }
+
+    private static Authenticate.Request CreateRequest(string? login = null, string? password = null) =>
+        new AutoFaker<Authenticate.Request>()
+            .RuleFor(request => request.Login, faker => login ?? faker.Internet.UserName())
+            .RuleFor(request => request.Password, faker => password ?? faker.Internet.Password())
+            .Generate();
 }

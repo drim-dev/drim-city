@@ -1,10 +1,11 @@
 ﻿using System.Net;
 using AutoBogus;
-using Common.Tests.Http.Extensions;
 using DrimCity.WebApi.Domain;
 using DrimCity.WebApi.Features.Posts.Requests;
+using DrimCity.WebApi.Tests.Extensions;
 using DrimCity.WebApi.Tests.Features.Posts.Contracts;
 using DrimCity.WebApi.Tests.Fixtures;
+using RestSharp;
 
 namespace DrimCity.WebApi.Tests.Features.Posts.Requests;
 
@@ -19,9 +20,9 @@ public class CreatePostTests : IAsyncLifetime
 
     public Task DisposeAsync() => Task.CompletedTask;
 
-    private static async Task<(PostContract?, HttpResponseMessage)> Act(HttpClient client,
+    private static async Task<RestResponse<PostContract>> Act(HttpClient client,
         CreatePostRequestContract request) =>
-        await client.PostTyped<PostContract>("/posts", request, CreateCancellationToken());
+        await new RestClient(client).ExecutePostAsync<PostContract>("/posts", request, CreateCancellationToken());
 
     [Fact]
     public async Task Should_create_post()
@@ -30,12 +31,13 @@ public class CreatePostTests : IAsyncLifetime
 
         var (httpClient, account) = await _fixture.CreatedAuthedHttpClient();
 
-        var (responsePost, httpResponse) = await Act(httpClient, request);
+        var restResponse = await Act(httpClient, request);
 
-        httpResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        responsePost.Should().NotBeNull();
+        restResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var responsePost = restResponse.Data;
+        responsePost.ShouldNotBeNull();
 
-        httpResponse.Headers.Location.Should().Be($"/posts/{responsePost!.Slug}");
+        restResponse.Headers.Location().Should().Be($"/posts/{responsePost.Slug}");
 
         responsePost.Id.Should().BeGreaterOrEqualTo(0);
         responsePost.Title.Should().Be(request.Title);
@@ -47,8 +49,8 @@ public class CreatePostTests : IAsyncLifetime
         var dbPost = await _fixture.Database.SingleOrDefault<Post>(x => x.Id == responsePost.Id,
             CreateCancellationToken());
 
-        dbPost.Should().NotBeNull();
-        dbPost!.Id.Should().Be(responsePost.Id);
+        dbPost.ShouldNotBeNull();
+        dbPost.Id.Should().Be(responsePost.Id);
         dbPost.Title.Should().Be(responsePost.Title);
         dbPost.Content.Should().Be(responsePost.Content);
         dbPost.CreatedAt.Should().BeCloseTo(responsePost.CreatedAt, 10.Seconds());
@@ -63,9 +65,9 @@ public class CreatePostTests : IAsyncLifetime
 
         var (httpClient, _) = await _fixture.CreateWronglyAuthedHttpClient();
 
-        var (_, httpResponse) = await Act(httpClient, request);
+        var restResponse = await Act(httpClient, request);
 
-        httpResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        restResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }
 
@@ -78,7 +80,7 @@ public class CreatePostValidatorTests
     [Fact]
     public void Should_not_have_errors_when_request_is_valid()
     {
-        var request = new CreatePost.Request(1, "title", "content");
+        var request = CreateRequest();
 
         var result = _validator.TestValidate(request);
 
@@ -91,7 +93,7 @@ public class CreatePostValidatorTests
     [InlineData(" ")]
     public void Should_have_error_when_title_empty(string title)
     {
-        var request = new CreatePost.Request(1, title, "content");
+        var request = CreateRequest() with { Title = title };
 
         var result = _validator.TestValidate(request);
 
@@ -102,7 +104,7 @@ public class CreatePostValidatorTests
     [Fact]
     public void Should_have_error_when_title_greater_max_length()
     {
-        var request = new CreatePost.Request(1, new string('a', 301), "content");
+        var request = CreateRequest() with { Title = new string('a', 301) };
 
         var result = _validator.TestValidate(request);
 
@@ -116,7 +118,7 @@ public class CreatePostValidatorTests
     [InlineData(" ")]
     public void Should_have_error_when_content_empty(string content)
     {
-        var request = new CreatePost.Request(1, "title", content);
+        var request = CreateRequest() with { Content = content };
 
         var result = _validator.TestValidate(request);
 
@@ -127,11 +129,17 @@ public class CreatePostValidatorTests
     [Fact]
     public void Should_have_error_when_content_greater_max_length()
     {
-        var request = new CreatePost.Request(1, "title", new string('a', 100_001));
+        var request = CreateRequest() with { Content = new string('a', 100_001) };
 
         var result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(x => x.Content)
             .WithErrorCode("posts:validation:content_must_be_less_or_equal_max_length");
     }
+
+    private static CreatePost.Request CreateRequest() =>
+        new AutoFaker<CreatePost.Request>()
+            .RuleFor(request => request.Title, faker => faker.Random.Word())
+            .RuleFor(request => request.Content, faker => faker.Random.Words())
+            .Generate();
 }
