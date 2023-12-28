@@ -1,20 +1,21 @@
 using System.Net;
 using AutoBogus;
 using Common.Tests.Database.Harnesses;
-using Common.Tests.Http.Extensions;
 using DrimCity.WebApi.Database;
 using DrimCity.WebApi.Domain;
 using DrimCity.WebApi.Features.Posts.Requests;
+using DrimCity.WebApi.Tests.Extensions;
 using DrimCity.WebApi.Tests.Features.Posts.Contracts;
 using DrimCity.WebApi.Tests.Fixtures;
+using RestSharp;
 
 namespace DrimCity.WebApi.Tests.Features.Posts.Requests;
 
 [Collection(PostsTestsCollection.Name)]
 public class CreateCommentTests : IAsyncLifetime
 {
-    private readonly TestFixture _fixture;
     private readonly DatabaseHarness<Program, AppDbContext> _database;
+    private readonly TestFixture _fixture;
 
     public CreateCommentTests(TestFixture fixture)
     {
@@ -26,13 +27,10 @@ public class CreateCommentTests : IAsyncLifetime
 
     public Task DisposeAsync() => Task.CompletedTask;
 
-    private static async Task<(CommentContract? responseComment, HttpResponseMessage httpResponse)> Act(
-        HttpClient httpClient, string postSlug, CreateCommentRequestContract request)
-    {
-        var (responseComment, httpResponse) = await httpClient.PostTyped<CommentContract>(
+    private static async Task<RestResponse<CommentContract>> Act(
+        HttpClient httpClient, string postSlug, CreateCommentRequestContract request) =>
+        await new RestClient(httpClient).ExecutePostAsync<CommentContract>(
             $"/posts/{postSlug}/comments", request, CreateCancellationToken());
-        return (responseComment, httpResponse);
-    }
 
     [Fact]
     public async Task Should_create_comment()
@@ -44,12 +42,13 @@ public class CreateCommentTests : IAsyncLifetime
 
         var request = AutoFaker.Generate<CreateCommentRequestContract>();
 
-        var (responseComment, httpResponse) = await Act(httpClient, post.Slug, request);
+        var restResponse = await Act(httpClient, post.Slug, request);
 
-        httpResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        responseComment.Should().NotBeNull();
+        restResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var responseComment = restResponse.Data;
+        responseComment.ShouldNotBeNull();
 
-        httpResponse.Headers.Location.Should().Be($"/posts/{post.Slug}/comments/{responseComment!.Id}");
+        restResponse.Headers.Location().Should().Be($"/posts/{post.Slug}/comments/{responseComment.Id}");
 
         responseComment.Id.Should().BeGreaterOrEqualTo(1);
         responseComment.Content.Should().Be(request.Content);
@@ -59,9 +58,9 @@ public class CreateCommentTests : IAsyncLifetime
         var dbComment = await _database.SingleOrDefault<Comment>(c => c.Id == responseComment.Id,
             CreateCancellationToken());
 
-        dbComment.Should().NotBeNull();
-        dbComment!.Should().BeEquivalentTo(responseComment);
-        dbComment!.PostId.Should().Be(post.Id);
+        dbComment.ShouldNotBeNull();
+        dbComment.Should().BeEquivalentTo(responseComment);
+        dbComment.PostId.Should().Be(post.Id);
     }
 
     [Fact]
@@ -73,9 +72,10 @@ public class CreateCommentTests : IAsyncLifetime
 
         var request = AutoFaker.Generate<CreateCommentRequestContract>();
 
-        var (responseComment, httpResponse) = await Act(httpClient, postSlug, request);
+        var restResponse = await Act(httpClient, postSlug, request);
 
-        httpResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        restResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var responseComment = restResponse.Data;
         responseComment.Should().BeNull();
     }
 
@@ -86,23 +86,22 @@ public class CreateCommentTests : IAsyncLifetime
 
         var (httpClient, _) = await _fixture.CreateWronglyAuthedHttpClient();
 
-        var (_, httpResponse) = await Act(httpClient, "slug", request);
+        var restResponse = await Act(httpClient, "slug", request);
 
-        httpResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        restResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }
 
 public record CreateCommentRequestContract(string Content);
 
-public class AddCommentValidatorTests
+public class CreateCommentValidatorTests
 {
-    private const string AnyValidSlug = "any-valid-slug";
     private readonly CreateComment.RequestValidator _validator = new();
 
     [Fact]
     public void Should_not_have_errors_when_request_is_valid()
     {
-        var request = new CreateComment.Request(1, "Valid content", AnyValidSlug);
+        var request = CreateRequest();
 
         var result = _validator.TestValidate(request);
 
@@ -115,7 +114,7 @@ public class AddCommentValidatorTests
     [InlineData(" ")]
     public void Should_have_error_when_content_empty(string content)
     {
-        var request = new CreateComment.Request(1, content, AnyValidSlug);
+        var request = CreateRequest() with { Content = content };
 
         var result = _validator.TestValidate(request);
 
@@ -127,7 +126,7 @@ public class AddCommentValidatorTests
     [Fact]
     public void Should_have_error_when_content_greater_max_length()
     {
-        var request = new CreateComment.Request(1, new string('a', 10_001), AnyValidSlug);
+        var request = CreateRequest() with { Content = new string('a', 10_001) };
 
         var result = _validator.TestValidate(request);
 
@@ -135,4 +134,9 @@ public class AddCommentValidatorTests
             .ShouldHaveValidationErrorFor(x => x.Content)
             .WithErrorCode("posts:validation:comment_content_must_be_less_or_equal_max_length");
     }
+
+    private static CreateComment.Request CreateRequest() =>
+        new AutoFaker<CreateComment.Request>()
+            .RuleFor(request => request.Content, faker => faker.Random.Words())
+            .Generate();
 }

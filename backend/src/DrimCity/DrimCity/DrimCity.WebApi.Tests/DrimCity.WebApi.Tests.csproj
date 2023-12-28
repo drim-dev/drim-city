@@ -11,7 +11,11 @@
     <ProjectReference Include="..\..\Common\Common.Tests.Database\Common.Tests.Database.csproj" />
     <ProjectReference Include="..\..\Common\Common.Tests.Http\Common.Tests.Http.csproj" />
     <ProjectReference Include="..\DrimCity.WebApi\DrimCity.WebApi.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.7.2" />
+    <PackageReference Include="RestSharp" Version="110.2.0" />
   </ItemGroup>
 
     <ItemGroup>

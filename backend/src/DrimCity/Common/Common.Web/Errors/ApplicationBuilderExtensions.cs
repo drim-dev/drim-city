@@ -36,6 +36,13 @@ public static class ApplicationBuilderExtensions
                             });
                         break;
                     }
+                    case BadHttpRequestException:
+                        await WriteProblemDetailsToResponse(context,
+                            "Bad request",
+                            "https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400",
+                            null,
+                            StatusCodes.Status400BadRequest);
+                        break;
                     case LogicConflictException ex:
                         await WriteProblemDetailsToResponse(context,
                             "Logic conflict",
@@ -78,7 +85,7 @@ public static class ApplicationBuilderExtensions
 
         return app;
 
-        static async Task WriteProblemDetailsToResponse(HttpContext context, string title, string type, string detail,
+        static async Task WriteProblemDetailsToResponse(HttpContext context, string title, string type, string? detail,
             int statusCode, Action<ProblemDetails>? configureProblemDetails = null)
         {
             var problemDetails = new ProblemDetails
