@@ -17,4 +17,5 @@ RUN dotnet publish ./DrimCity/DrimCity.WebApi/DrimCity.WebApi.csproj -c Release 
 FROM base AS final
 
 COPY --from=build /app/publish .
+
 ENTRYPOINT ["dotnet", "DrimCity.WebApi.dll"]
