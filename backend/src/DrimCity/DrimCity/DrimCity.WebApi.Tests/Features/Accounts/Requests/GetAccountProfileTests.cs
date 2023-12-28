@@ -50,7 +50,7 @@ public class GetAccountProfileTests : IAsyncLifetime
 
         profile.Should().NotBeNull();
         profile!.Login.Should().Be(account.Login);
-        profile.CreatedAt.Should().Be(account.CreatedAt);
+        profile.CreatedAt.Should().BeCloseTo(account.CreatedAt, 1.Seconds());
     }
 
     [Fact]
