@@ -351,6 +351,9 @@ MigrationBackup/
 
 .idea/
 
+.vscode/
+.DS_Store
+
 # Terraform
 .terraform/
 **/terraform.tfstate

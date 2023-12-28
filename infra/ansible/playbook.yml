@@ -33,7 +33,7 @@
     postgres_version: "14"
     postgres_bin_path: "/usr/lib/postgresql/{{ postgres_version }}/bin"
     postgres_config_dir: "/etc/postgresql/{{ postgres_version }}/main"
-    postgres_volume_dir: /mnt/HC_Volume_36849556
+    postgres_volume_dir: /mnt/HC_Volume_100221664
     postgres_data_dir: "{{ postgres_volume_dir }}/data"
 
   tasks:
